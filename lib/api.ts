@@ -36,7 +36,11 @@ function isAuthEndpoint(url: string | undefined): boolean {
 
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE,
-  timeout: 15_000,
+  // Generous default so the very first request after Render cold-start
+  // (which can take 30-60s) doesn't get a synthetic axios timeout error
+  // surfacing in the UI as "backend not working." Pages that want a
+  // fast check pass `timeout: 5000` explicitly (e.g. useHealthWatchdog).
+  timeout: 60_000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -197,6 +201,24 @@ api.interceptors.response.use(
       if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
         window.location.href = "/login";
       }
+    }
+
+    // 4. Network / timeout retry: a Render cold-start can take 30-60s on
+    // the very first request after idle. Axios will report it as
+    // ECONNABORTED (no response). Retry once silently with a longer
+    // timeout before bubbling up.
+    if (
+      !status &&
+      originalRequest &&
+      !(originalRequest as { _coldRetried?: boolean })._coldRetried &&
+      (error.code === "ECONNABORTED" || (error.message ?? "").toLowerCase().includes("timeout"))
+    ) {
+      (originalRequest as { _coldRetried?: boolean })._coldRetried = true;
+      const cfg: InternalAxiosRequestConfig = {
+        ...originalRequest,
+        timeout: 90_000,
+      };
+      return api.request(cfg);
     }
 
     return Promise.reject(error);

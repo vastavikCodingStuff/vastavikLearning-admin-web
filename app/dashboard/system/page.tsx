@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouteStatus } from "@/hooks/useRouteStatus";
-import { Settings, RefreshCw, Wifi, WifiOff, Server, Info } from "lucide-react";
+import { useHealthWatchdog } from "@/hooks/useHealthWatchdog";
+import { Settings, RefreshCw, Wifi, WifiOff, Server, Info, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ROUTE_DESCRIPTIONS: Record<string, string> = {
@@ -17,6 +18,7 @@ const ROUTE_DESCRIPTIONS: Record<string, string> = {
 
 export default function SystemPage() {
   const { health, loading, error, refetch, toggleRoute } = useRouteStatus();
+  const { state: healthState, message: healthMsg } = useHealthWatchdog(60_000);
   const [toggling, setToggling] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
@@ -26,7 +28,7 @@ export default function SystemPage() {
       const newState = await toggleRoute(feature);
       setToastMsg(`${feature} is now ${newState ? "🟢 ONLINE" : "🔴 OFFLINE"}`);
       setTimeout(() => setToastMsg(null), 3000);
-    } catch (e) {
+    } catch {
       setToastMsg(`Failed to toggle ${feature}`);
       setTimeout(() => setToastMsg(null), 3000);
     } finally {
@@ -36,6 +38,12 @@ export default function SystemPage() {
 
   const routes = health?.route_status ?? {};
   const uptimeHours = health ? (health.uptime_seconds / 3600).toFixed(1) : "—";
+
+  // If the global health watchdog already knows the backend is warming
+  // up, prefer its friendlier copy over the raw "Failed to fetch" from
+  // useRouteStatus.
+  const showColdStart = healthState === "slow" || healthState === "checking";
+  const showDown = healthState === "down" && !loading;
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -66,6 +74,15 @@ export default function SystemPage() {
           </div>
           {loading ? (
             <div className="h-3 bg-slate-200 rounded w-32 mt-1 animate-pulse" />
+          ) : showColdStart ? (
+            <div className="flex items-center gap-1.5 text-sm text-orange-700 mt-1 font-medium">
+              <AlertCircle className="w-3.5 h-3.5" />
+              <span>{healthMsg ?? "Backend is warming up (Render cold start) — please wait…"}</span>
+            </div>
+          ) : showDown ? (
+            <p className="text-sm text-red-600 mt-1">
+              {healthMsg ?? "Backend is unreachable. Check the deploy status on Render."}
+            </p>
           ) : error ? (
             <p className="text-sm text-red-600 mt-1">{error}</p>
           ) : (
