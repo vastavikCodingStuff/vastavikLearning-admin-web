@@ -104,7 +104,6 @@ export function useCourses() {
       console.warn("Could not save to localStorage", e);
     }
 
-    // 3. Send to backend if available
     try {
       await api.post("/admin/courses", course);
     } catch {
@@ -114,7 +113,30 @@ export function useCourses() {
     return course;
   };
 
-  return { courses, loading, isOffline, error, refetch: fetch, addCourse };
+  const deleteCourse = async (courseId: string) => {
+    // 1. Optimistic update in state
+    setCourses((prev) => prev.filter((c) => c.id !== courseId));
+
+    // 2. Remove from localStorage
+    try {
+      const current = getStoredCourses();
+      localStorage.setItem(
+        "vastavik_custom_courses",
+        JSON.stringify(current.filter((c) => c.id !== courseId))
+      );
+    } catch (e) {
+      console.warn("Could not remove course from localStorage", e);
+    }
+
+    // 3. Delete from backend if available
+    try {
+      await api.delete(`/admin/courses/${courseId}`);
+    } catch (e) {
+      console.warn("Could not delete course from backend", e);
+    }
+  };
+
+  return { courses, loading, isOffline, error, refetch: fetch, addCourse, deleteCourse };
 }
 
 export function useCourseCurriculum(courseId: string) {

@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { useCourses } from "@/hooks/useCourses";
-import { BookOpen, Plus, Eye, EyeOff, Edit, Youtube, WifiOff } from "lucide-react";
+import { BookOpen, Plus, Eye, EyeOff, Edit, Youtube, WifiOff, Trash2 } from "lucide-react";
 import { Course } from "@/types/api";
 import Link from "next/link";
 import { UploadVideoModal } from "@/components/courses/UploadVideoModal";
 import { AddCourseModal } from "@/components/courses/AddCourseModal";
 
 export default function CoursesPage() {
-  const { courses, loading, isOffline, refetch, addCourse } = useCourses();
+  const { courses, loading, isOffline, refetch, addCourse, deleteCourse } = useCourses();
   const [search, setSearch] = useState("");
   const [isAddCourseOpen, setIsAddCourseOpen] = useState(false);
   const [isUploadVideoOpen, setIsUploadVideoOpen] = useState(false);
@@ -22,6 +22,11 @@ export default function CoursesPage() {
   const handleOpenUploadForCourse = (courseId?: string) => {
     setSelectedCourseForVideo(courseId);
     setIsUploadVideoOpen(true);
+  };
+
+  const handleDeleteCourse = async (id: string, title: string) => {
+    if (!confirm(`Are you sure you want to delete course "${title}"? This cannot be undone.`)) return;
+    await deleteCourse(id);
   };
 
   if (loading) return <LoadingSpinner />;
@@ -96,6 +101,7 @@ export default function CoursesPage() {
               key={course.id}
               course={course}
               onAddVideo={(cid) => handleOpenUploadForCourse(cid)}
+              onDelete={handleDeleteCourse}
             />
           ))}
         </div>
@@ -107,9 +113,11 @@ export default function CoursesPage() {
 function CourseCard({
   course,
   onAddVideo,
+  onDelete,
 }: {
   course: Course;
   onAddVideo?: (courseId: string) => void;
+  onDelete?: (id: string, title: string) => void;
 }) {
   const bgColor = `#${course.color.toString(16).padStart(6, "0")}22`;
   const borderColor = `#${course.color.toString(16).padStart(6, "0")}44`;
@@ -168,6 +176,15 @@ function CourseCard({
             <Eye className="w-3.5 h-3.5 text-slate-500" />
           )}
         </button>
+        {onDelete && (
+          <button
+            onClick={() => onDelete(course.id, course.title)}
+            className="w-8 h-8 flex items-center justify-center border border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-700 rounded-lg transition-colors"
+            title="Delete course"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
     </div>
   );

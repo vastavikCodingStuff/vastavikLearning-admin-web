@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Code2, Search, ChevronDown, ChevronUp, RefreshCcw } from "lucide-react";
+import { Plus, Code2, Search, ChevronDown, ChevronUp, RefreshCcw, Trash2 } from "lucide-react";
 import api from "@/lib/api";
 import { CodingExercise } from "@/types/api";
 import { languageColor } from "@/lib/utils";
@@ -27,6 +27,17 @@ export default function PracticeCodingPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleDeleteExercise = async (e: React.MouseEvent, exerciseId: string, title: string) => {
+    e.stopPropagation();
+    if (!confirm(`Are you sure you want to delete coding exercise "${title}"?`)) return;
+    setExercises((prev) => prev.filter((ex) => ex.id !== exerciseId));
+    try {
+      await api.delete(`/admin/practice/coding/${exerciseId}`);
+    } catch (err) {
+      console.error("Failed to delete exercise:", err);
+    }
+  };
 
   const filtered = exercises.filter((e) =>
     e.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -89,21 +100,30 @@ export default function PracticeCodingPage() {
           )
           : filtered.map((ex) => (
               <div key={ex.id} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                <button
-                  onClick={() => setExpanded(expanded === ex.id ? null : ex.id)}
-                  className="w-full flex items-center gap-4 px-5 py-4 hover:bg-slate-50 transition-colors text-left"
-                >
-                  <Code2 className="w-5 h-5 text-orange-500 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                      <p className="font-semibold text-slate-800 text-sm">{ex.title}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${languageColor(ex.language)}`}>{ex.language.toUpperCase()}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${diffColor[ex.difficulty] ?? diffColor.easy}`}>{ex.difficulty}</span>
+                <div className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors">
+                  <button
+                    onClick={() => setExpanded(expanded === ex.id ? null : ex.id)}
+                    className="flex-1 flex items-center gap-4 text-left min-w-0"
+                  >
+                    <Code2 className="w-5 h-5 text-orange-500 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                        <p className="font-semibold text-slate-800 text-sm">{ex.title}</p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${languageColor(ex.language)}`}>{ex.language.toUpperCase()}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${diffColor[ex.difficulty] ?? diffColor.easy}`}>{ex.difficulty}</span>
+                      </div>
+                      <p className="text-xs text-slate-400 truncate">{ex.description}</p>
                     </div>
-                    <p className="text-xs text-slate-400 truncate">{ex.description}</p>
-                  </div>
-                  {expanded === ex.id ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-                </button>
+                    {expanded === ex.id ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                  </button>
+                  <button
+                    onClick={(e) => handleDeleteExercise(e, ex.id, ex.title)}
+                    className="p-1.5 ml-2 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors flex-shrink-0"
+                    title="Delete Coding Exercise"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
 
                 {expanded === ex.id && (
                   <div className="border-t border-slate-100 p-5 space-y-4">

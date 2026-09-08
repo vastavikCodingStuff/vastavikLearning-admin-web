@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, ClipboardList, Search, ChevronDown, ChevronUp, RefreshCcw } from "lucide-react";
+import { Plus, ClipboardList, Search, ChevronDown, ChevronUp, RefreshCcw, Trash2 } from "lucide-react";
 import api from "@/lib/api";
 import { QuizSet, QuizQuestion } from "@/types/api";
 import { formatDate } from "@/lib/utils";
@@ -38,6 +38,35 @@ export default function PracticeQuizPage() {
       setQuestions((prev) => ({ ...prev, [setId]: r.data.questions ?? [] }));
     } catch {
       setQuestions((prev) => ({ ...prev, [setId]: [] }));
+    }
+  };
+
+  const handleDeleteSet = async (e: React.MouseEvent, setId: string, title: string) => {
+    e.stopPropagation();
+    if (!confirm(`Are you sure you want to delete quiz set "${title}" and all its questions?`)) return;
+    setSets((prev) => prev.filter((s) => s.id !== setId));
+    try {
+      await api.delete(`/admin/practice/quiz/${setId}`);
+    } catch (err) {
+      console.error("Failed to delete quiz set:", err);
+    }
+  };
+
+  const handleDeleteQuestion = async (setId: string, questionId: string) => {
+    if (!confirm("Are you sure you want to delete this question?")) return;
+    setQuestions((prev) => ({
+      ...prev,
+      [setId]: (prev[setId] ?? []).filter((q) => q.id !== questionId),
+    }));
+    setSets((prev) =>
+      prev.map((s) =>
+        s.id === setId ? { ...s, question_count: Math.max(0, s.question_count - 1) } : s
+      )
+    );
+    try {
+      await api.delete(`/admin/practice/quiz/${setId}/questions/${questionId}`);
+    } catch (err) {
+      console.error("Failed to delete question:", err);
     }
   };
 
@@ -106,17 +135,26 @@ export default function PracticeQuizPage() {
           )
           : filtered.map((set) => (
               <div key={set.id} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                <button
-                  onClick={() => toggleSet(set.id)}
-                  className="w-full flex items-center gap-4 px-5 py-4 hover:bg-slate-50 transition-colors text-left"
-                >
-                  <ClipboardList className="w-5 h-5 text-orange-500 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-slate-800 text-sm">{set.title}</p>
-                    <p className="text-xs text-slate-400">{set.subject} · {set.question_count} questions · {formatDate(set.created_at)}</p>
-                  </div>
-                  {expanded === set.id ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-                </button>
+                <div className="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors">
+                  <button
+                    onClick={() => toggleSet(set.id)}
+                    className="flex-1 flex items-center gap-4 text-left min-w-0"
+                  >
+                    <ClipboardList className="w-5 h-5 text-orange-500 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-slate-800 text-sm">{set.title}</p>
+                      <p className="text-xs text-slate-400">{set.subject} · {set.question_count} questions · {formatDate(set.created_at)}</p>
+                    </div>
+                    {expanded === set.id ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                  </button>
+                  <button
+                    onClick={(e) => handleDeleteSet(e, set.id, set.title)}
+                    className="p-1.5 ml-2 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors flex-shrink-0"
+                    title="Delete Quiz Set"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
                 {expanded === set.id && (
                   <div className="border-t border-slate-100 divide-y divide-slate-50">
                     {(questions[set.id] ?? []).length === 0 && (
@@ -129,7 +167,16 @@ export default function PracticeQuizPage() {
                             {qi + 1}
                           </span>
                           <div className="flex-1">
-                            <p className="text-sm text-slate-800 font-medium mb-2">{q.question}</p>
+                            <div className="flex items-start justify-between gap-3 mb-2">
+                              <p className="text-sm text-slate-800 font-medium">{q.question}</p>
+                              <button
+                                onClick={() => handleDeleteQuestion(set.id, q.id)}
+                                className="p-1 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors flex-shrink-0"
+                                title="Delete Question"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mb-2">
                               {q.options.map((opt, oi) => (
                                 <div key={oi} className={`text-xs px-2.5 py-1.5 rounded-lg border ${oi === q.correct_index ? "bg-green-50 border-green-300 text-green-700 font-medium" : "bg-slate-50 border-slate-200 text-slate-600"}`}>

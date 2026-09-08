@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, FileQuestion, Search, Filter, RefreshCcw } from "lucide-react";
+import { Plus, FileQuestion, Search, Filter, RefreshCcw, Trash2 } from "lucide-react";
 import api from "@/lib/api";
 import { PYQ } from "@/types/api";
 import { CreatePracticeModal } from "@/components/practice/CreatePracticeModal";
@@ -27,6 +27,16 @@ export default function PracticePYQPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleDeletePYQ = async (id: string, question: string) => {
+    if (!confirm(`Are you sure you want to delete this PYQ?\n"${question.slice(0, 60)}..."`)) return;
+    setPYQs((prev) => prev.filter((p) => p.id !== id));
+    try {
+      await api.delete(`/admin/practice/pyq/${id}`);
+    } catch (err) {
+      console.error("Failed to delete PYQ:", err);
+    }
+  };
 
   const years = [...new Set(pyqs.map((p) => p.year))].sort((a, b) => Number(b) - Number(a));
 
@@ -120,6 +130,13 @@ export default function PracticePYQPage() {
                   <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full font-medium">{pyq.year}</span>
                   <span className="text-xs bg-orange-50 text-orange-600 px-2.5 py-1 rounded-full">{pyq.subject}</span>
                   <span className="text-xs text-slate-400 ml-auto">{pyq.marks} marks</span>
+                  <button
+                    onClick={() => handleDeletePYQ(pyq.id, pyq.question)}
+                    className="p-1 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors ml-1"
+                    title="Delete PYQ"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
                 <div className="mb-3">
                   <p className="text-xs text-slate-400 mb-1 font-medium uppercase tracking-wide">Question</p>

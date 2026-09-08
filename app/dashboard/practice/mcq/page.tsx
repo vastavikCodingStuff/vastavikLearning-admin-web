@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, CheckSquare, Search, RefreshCcw } from "lucide-react";
+import { Plus, CheckSquare, Search, RefreshCcw, Trash2 } from "lucide-react";
 import api from "@/lib/api";
 import { MCQQuestion } from "@/types/api";
 import { CreatePracticeModal } from "@/components/practice/CreatePracticeModal";
@@ -25,6 +25,16 @@ export default function PracticeMCQPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleDeleteMCQ = async (id: string, question: string) => {
+    if (!confirm(`Are you sure you want to delete this MCQ?\n"${question.slice(0, 60)}..."`)) return;
+    setMCQs((prev) => prev.filter((m) => m.id !== id));
+    try {
+      await api.delete(`/admin/practice/mcq/${id}`);
+    } catch (err) {
+      console.error("Failed to delete MCQ:", err);
+    }
+  };
 
   const filtered = mcqs.filter((m) =>
     m.question.toLowerCase().includes(search.toLowerCase()) ||
@@ -92,18 +102,27 @@ export default function PracticeMCQPage() {
           )
           : filtered.map((mcq, idx) => (
               <div key={mcq.id} className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border border-slate-100">
-                <div className="flex items-start gap-3 mb-3">
-                  <span className="w-6 h-6 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
-                    {idx + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap gap-2 mb-1.5">
-                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">{mcq.subject}</span>
-                      {mcq.topic && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{mcq.topic}</span>}
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${diffColor[mcq.difficulty] ?? diffColor.easy}`}>{mcq.difficulty}</span>
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <span className="w-6 h-6 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
+                      {idx + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap gap-2 mb-1.5">
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">{mcq.subject}</span>
+                        {mcq.topic && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{mcq.topic}</span>}
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${diffColor[mcq.difficulty] ?? diffColor.easy}`}>{mcq.difficulty}</span>
+                      </div>
+                      <p className="font-medium text-slate-800 text-sm">{mcq.question}</p>
                     </div>
-                    <p className="font-medium text-slate-800 text-sm">{mcq.question}</p>
                   </div>
+                  <button
+                    onClick={() => handleDeleteMCQ(mcq.id, mcq.question)}
+                    className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors flex-shrink-0"
+                    title="Delete MCQ"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3 ml-0 sm:ml-9">
                   {mcq.options.map((opt, oi) => (

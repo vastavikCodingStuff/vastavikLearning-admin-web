@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Video, Monitor, PenLine, Zap, Plus, Search, Clock, Crown, Play, Youtube, ExternalLink } from "lucide-react";
+import { Video, Monitor, PenLine, Zap, Plus, Search, Clock, Crown, Play, Youtube, ExternalLink, Trash2 } from "lucide-react";
 import api from "@/lib/api";
 import { VideoLesson, VideoType } from "@/types/api";
 import { formatDuration, cn } from "@/lib/utils";
@@ -99,6 +99,25 @@ export default function VideosPage() {
 
   const handleVideoAdded = (newVideo: VideoLesson) => {
     setVideos((prev) => [newVideo, ...prev]);
+  };
+
+  const handleDeleteVideo = async (id: string, title: string) => {
+    if (!confirm(`Are you sure you want to delete "${title}"?`)) return;
+    setVideos((prev) => prev.filter((v) => v.id !== id));
+    try {
+      const custom = getCustomVideos();
+      localStorage.setItem(
+        "vastavik_custom_videos",
+        JSON.stringify(custom.filter((v) => v.id !== id))
+      );
+    } catch (e) {
+      console.warn("Could not remove video from localStorage", e);
+    }
+    try {
+      await api.delete(`/admin/videos/${id}`);
+    } catch (err) {
+      console.error("Failed to delete video from backend:", err);
+    }
   };
 
   const filtered = videos.filter((v) => {
@@ -266,14 +285,23 @@ export default function VideosPage() {
                     >
                       <Play className="w-3 h-3" /> Play Lecture
                     </button>
-                    <a
-                      href={video.youtube_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-0.5"
-                    >
-                      YouTube <ExternalLink className="w-2.5 h-2.5" />
-                    </a>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={video.youtube_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-0.5"
+                      >
+                        YouTube <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
+                      <button
+                        onClick={() => handleDeleteVideo(video.id, video.title)}
+                        className="p-1 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
+                        title="Delete video"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
