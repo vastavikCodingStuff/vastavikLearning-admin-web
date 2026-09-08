@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { useAuthStore } from "@/store/authStore";
@@ -14,7 +14,14 @@ export default function DashboardLayout({
 }) {
   const { isLoggedIn, user, isHydrated } = useAuthStore();
   const router = useRouter();
+  const pathname = usePathname();
   const [isClient, setIsClient] = useState(false);
+  // Re-evaluated on every render against actual localStorage so a stale
+  // zustand state (e.g. after a hard reload mid-session) can never let a
+  // logged-out user linger on a dashboard page.
+  const localToken = isClient ? getToken() : null;
+  const localUser = isClient ? getAdminUser() : null;
+  const hasAuth = (isLoggedIn && user?.role === "admin") || (!!localToken && localUser?.role === "admin");
 
   useEffect(() => {
     setIsClient(true);
@@ -22,28 +29,12 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!isClient) return;
-
-    // Check both Zustand store and direct localStorage for safety
-    const localToken = getToken();
-    const localUser = getAdminUser();
-    const hasAuth = (isLoggedIn && user?.role === "admin") || (localToken && localUser?.role === "admin");
-
     if (!hasAuth) {
       router.replace("/login");
     }
-  }, [isClient, isHydrated, isLoggedIn, user, router]);
+  }, [isClient, isHydrated, isLoggedIn, user, hasAuth, router, pathname]);
 
-  // While checking authentication on client, show a smooth loading indicator
-  if (!isClient) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
-  const localToken = getToken();
-  if (!isLoggedIn && !localToken) {
+  if (!isClient || !hasAuth) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full" />

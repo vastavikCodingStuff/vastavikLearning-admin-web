@@ -52,52 +52,54 @@ export default function LoginPage() {
 
       performLogin(res.data);
     } catch (err: unknown) {
-      console.warn("Backend auth error or server offline:", err);
-
-      // 2. Master fallback: if email & password match the default admin credentials, allow login
-      const isMasterAdmin =
-        email.trim().toLowerCase() === DEFAULT_ADMIN_EMAIL.toLowerCase() &&
-        password === DEFAULT_ADMIN_PASS;
-
-      if (isMasterAdmin) {
-        const fallbackAuth: AuthResponse = {
-          success: true,
-          access_token: "master_admin_jwt_session_" + Date.now(),
-          refresh_token: "master_admin_refresh_session_" + Date.now(),
-          user_id: "admin_master",
-          name: "System Administrator",
-          email: email.trim(),
-          role: "admin",
-        };
-        performLogin(fallbackAuth);
-        return;
-      }
-
+      // Surface the real error from the backend. No more silent fake-token
+      // fallback: previously, a network blip would sign the user in with a
+      // bogus local token that the backend immediately rejected, causing the
+      // axios interceptor to redirect back to /login and feel like a
+      // mysterious auto-signout.
       const axiosErr = err as {
         response?: { data?: { detail?: string; message?: string } };
       };
       const msg =
         axiosErr.response?.data?.detail ??
         axiosErr.response?.data?.message ??
-        "Invalid email or password. Please try again.";
+        "Could not reach the server. Check your connection and try again.";
       setError(msg);
       setLoading(false);
     }
   };
 
-  const handleInstantGuestLogin = () => {
+  // "One-click sign in" is now an actual backend call with the default master
+  // admin credentials, not a local token mint. It only works if the backend
+  // is reachable AND the master admin password still matches (which it does
+  // for this deployment per config.ADMIN_PASSWORD).
+  const handleInstantGuestLogin = async () => {
     setEmail(DEFAULT_ADMIN_EMAIL);
     setPassword(DEFAULT_ADMIN_PASS);
-    const fallbackAuth: AuthResponse = {
-      success: true,
-      access_token: "master_admin_jwt_session_" + Date.now(),
-      refresh_token: "master_admin_refresh_session_" + Date.now(),
-      user_id: "admin_master",
-      name: "System Administrator",
-      email: DEFAULT_ADMIN_EMAIL,
-      role: "admin",
-    };
-    performLogin(fallbackAuth);
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.post<AuthResponse>("/api/v1/auth/login", {
+        email: DEFAULT_ADMIN_EMAIL,
+        password: DEFAULT_ADMIN_PASS,
+      });
+      if (res.data.role !== "admin") {
+        setError("Master admin credentials are no longer valid.");
+        setLoading(false);
+        return;
+      }
+      performLogin(res.data);
+    } catch (err: unknown) {
+      const axiosErr = err as {
+        response?: { data?: { detail?: string; message?: string } };
+      };
+      const msg =
+        axiosErr.response?.data?.detail ??
+        axiosErr.response?.data?.message ??
+        "Could not reach the server. Check your connection and try again.";
+      setError(msg);
+      setLoading(false);
+    }
   };
 
   return (
@@ -167,7 +169,8 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={handleInstantGuestLogin}
-              className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-medium py-2.5 rounded-xl text-xs transition-colors"
+              disabled={loading}
+              className="w-full bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-medium py-2.5 rounded-xl text-xs transition-colors disabled:opacity-60"
             >
               🚀 Instant One-Click Admin Sign In
             </button>
