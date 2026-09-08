@@ -33,6 +33,9 @@ export interface StudentProfile {
   created_at: string;
   // Additional detail fields
   class_grade?: string;
+  school?: string;
+  enrolled_course?: string | null;
+  enrolled_course_id?: string | null;
   payment_details?: PaymentDetail[];
 }
 

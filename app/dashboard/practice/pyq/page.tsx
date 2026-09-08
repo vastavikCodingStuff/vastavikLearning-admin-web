@@ -68,7 +68,7 @@ export default function PracticePYQPage() {
             <select
               value={yearFilter}
               onChange={(e) => setYearFilter(e.target.value)}
-              className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-400"
+              className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-orange-400 text-slate-900 bg-white"
             >
               <option value="">All Years</option>
               {years.map((y) => <option key={y} value={y}>{y}</option>)}

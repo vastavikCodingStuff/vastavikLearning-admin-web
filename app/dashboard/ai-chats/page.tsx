@@ -17,12 +17,9 @@ export default function AiChatsPage() {
   useEffect(() => {
     api.get<{ sessions: AIChatSession[]; total: number }>("/admin/ai-chats")
       .then((r) => setSessions(r.data.sessions ?? []))
-      .catch(() => {
-        setSessions([
-          { session_id: "sess_1", uid: "uid_0", student_name: "Parth Shah", model_used: "mistral-god", message_count: 12, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-          { session_id: "sess_2", uid: "uid_1", student_name: "Ananya Mehta", model_used: "gemini-3.7-flash", message_count: 5, created_at: new Date(Date.now() - 3600000).toISOString(), updated_at: new Date(Date.now() - 3600000).toISOString() },
-          { session_id: "sess_3", uid: "uid_2", student_name: "Rohan Gupta", model_used: "mistral-god", message_count: 28, created_at: new Date(Date.now() - 7200000).toISOString(), updated_at: new Date(Date.now() - 7200000).toISOString() },
-        ]);
+      .catch((err) => {
+        console.error("Failed to load AI chat sessions:", err);
+        setSessions([]);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -32,12 +29,9 @@ export default function AiChatsPage() {
     setMsgLoading(true);
     api.get<{ messages: AIChatMessage[] }>(`/admin/ai-chats/${session.session_id}`)
       .then((r) => setMessages(r.data.messages ?? []))
-      .catch(() => {
-        setMessages([
-          { role: "user", content: "Explain polymorphism in Java", timestamp: new Date().toISOString() },
-          { role: "assistant", content: "Polymorphism in Java means the ability of an object to take many forms. There are two types:\n\n1. **Compile-time polymorphism** (Method Overloading)\n2. **Runtime polymorphism** (Method Overriding)\n\nExample:\n```java\nclass Animal {\n  void sound() { System.out.println(\"Generic sound\"); }\n}\nclass Dog extends Animal {\n  void sound() { System.out.println(\"Bark\"); }\n}\n```", timestamp: new Date(Date.now() + 2000).toISOString(), model: session.model_used },
-          { role: "user", content: "Can you give me more examples?", timestamp: new Date(Date.now() + 5000).toISOString() },
-        ]);
+      .catch((err) => {
+        console.error("Failed to load session messages:", err);
+        setMessages([]);
       })
       .finally(() => setMsgLoading(false));
   };
@@ -72,6 +66,12 @@ export default function AiChatsPage() {
                   <div className="h-2.5 bg-slate-100 rounded w-1/2" />
                 </div>
               ))
+            : filtered.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 text-sm">
+                  <MessageSquare className="w-6 h-6 mx-auto mb-2 opacity-30" />
+                  No chat sessions found.
+                </div>
+              )
             : filtered.map((s) => (
                 <button
                   key={s.session_id}

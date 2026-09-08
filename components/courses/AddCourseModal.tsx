@@ -99,7 +99,7 @@ export function AddCourseModal({ isOpen, onClose, onAddCourse }: AddCourseModalP
                 placeholder="e.g. Java Masterclass for ICSE Class 10"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
               />
             </div>
 
@@ -112,7 +112,7 @@ export function AddCourseModal({ isOpen, onClose, onAddCourse }: AddCourseModalP
                 placeholder="What students will learn in this course..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
               />
             </div>
 

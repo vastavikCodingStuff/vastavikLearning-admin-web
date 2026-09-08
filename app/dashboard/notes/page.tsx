@@ -14,13 +14,9 @@ export default function NotesPage() {
   useEffect(() => {
     api.get<{ notes: StudentNote[] }>("/admin/notes")
       .then((r) => setNotes(r.data.notes ?? []))
-      .catch(() => {
-        setNotes([
-          { id: "n1", uid: "uid_0", student_name: "Parth Shah", title: "OOP Notes", content: "Encapsulation is the bundling of data and methods. Access modifiers: public, private, protected, default.", tag: "Java", created_at: new Date().toISOString() },
-          { id: "n2", uid: "uid_1", student_name: "Ananya Mehta", title: "Binary Search", content: "Binary search works on sorted arrays. Time complexity: O(log n). Divide and conquer approach.", tag: "DSA", created_at: new Date(Date.now() - 3600000).toISOString() },
-          { id: "n3", uid: "uid_2", student_name: "Rohan Gupta", title: "SQL Joins", content: "INNER JOIN returns matching rows. LEFT JOIN returns all from left + matching from right.", tag: "SQL", created_at: new Date(Date.now() - 7200000).toISOString() },
-          { id: "n4", uid: "uid_0", student_name: "Parth Shah", title: "Python Lists", content: "Lists are mutable sequences. append(), extend(), insert(), remove(), pop() are common methods.", tag: "Python", created_at: new Date(Date.now() - 86400000).toISOString() },
-        ]);
+      .catch((err) => {
+        console.error("Failed to load notes:", err);
+        setNotes([]);
       })
       .finally(() => setLoading(false));
   }, []);

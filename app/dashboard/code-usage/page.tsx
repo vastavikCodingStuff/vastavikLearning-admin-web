@@ -15,12 +15,9 @@ export default function CodeUsagePage() {
   useEffect(() => {
     api.get<{ logs: CodeExecutionLog[] }>("/admin/code-usage")
       .then((r) => setLogs(r.data.logs ?? []))
-      .catch(() => {
-        setLogs([
-          { id: "exec_1", uid: "uid_0", student_name: "Parth Shah", language: "java", source_code: "public class Main {\n  public static void main(String[] args) {\n    System.out.println(\"Hello World\");\n  }\n}", stdout: "Hello World\n", stderr: "", status_description: "Accepted", execution_time: "0.12s", memory_kb: 4096, created_at: new Date().toISOString() },
-          { id: "exec_2", uid: "uid_1", student_name: "Ananya Mehta", language: "python", source_code: "print('Hello Python')", stdout: "Hello Python\n", stderr: "", status_description: "Accepted", execution_time: "0.04s", memory_kb: 1024, created_at: new Date(Date.now() - 3600000).toISOString() },
-          { id: "exec_3", uid: "uid_2", student_name: "Rohan Gupta", language: "java", source_code: "public class Test { public static void main(String[] a) { int x = 5/0; } }", stdout: "", stderr: "ArithmeticException: / by zero\n\tat Test.main(Test.java:1)", status_description: "Runtime Error", execution_time: "0.08s", memory_kb: 3072, created_at: new Date(Date.now() - 7200000).toISOString() },
-        ]);
+      .catch((err) => {
+        console.error("Failed to load code executions:", err);
+        setLogs([]);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -52,6 +49,12 @@ export default function CodeUsagePage() {
                 <div className="h-4 bg-slate-100 rounded w-20" />
               </div>
             ))
+          : filtered.length === 0 ? (
+              <div className="text-center py-16 text-slate-400">
+                <Code2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No code execution logs yet.</p>
+              </div>
+            )
           : filtered.map((log) => {
               const isAccepted = log.status_description === "Accepted";
               const isExpanded = expanded === log.id;

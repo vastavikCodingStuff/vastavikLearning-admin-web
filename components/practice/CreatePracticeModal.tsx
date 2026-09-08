@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { X, FileText, FileUp, Sparkles, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { X, FileText, FileUp, Sparkles, Loader2, CheckCircle2, AlertTriangle, Pencil, Trash2, Plus } from "lucide-react";
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -48,8 +48,11 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
   const [text, setText] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [result, setResult] = useState<{ count: number; set_id?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [previewItems, setPreviewItems] = useState<any[] | null>(null);
+  const [previewRaw, setPreviewRaw] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
@@ -61,17 +64,20 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
     setText("");
     setFile(null);
     setSubmitting(false);
+    setSaving(false);
     setResult(null);
     setError(null);
+    setPreviewItems(null);
+    setPreviewRaw(null);
   };
 
   const close = () => {
-    if (submitting) return;
+    if (submitting || saving) return;
     reset();
     onClose();
   };
 
-  const submit = async () => {
+  const handleParse = async () => {
     if (!mode) return;
     if (!subject.trim()) {
       setError("Please fill in the subject.");
@@ -88,34 +94,86 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
     setSubmitting(true);
     setError(null);
     try {
+      let resp;
       if (mode === "write") {
-        const resp = await api.post(`/admin/practice/ingest`, {
+        resp = await api.post(`/admin/practice/parse`, {
           content_type: contentType,
           subject: subject.trim(),
           title: title.trim() || undefined,
           text: text.trim(),
+          model: "minimax/minimax-m2:free",
         });
-        setResult({ count: resp.data.created_count ?? 0, set_id: resp.data.set_id });
-        onCreated?.({ count: resp.data.created_count ?? 0, set_id: resp.data.set_id });
       } else {
-        // PDF: use FormData (multipart) so we don't need to base64 in the browser
         const fd = new FormData();
         fd.append("content_type", contentType);
         fd.append("subject", subject.trim());
         if (title.trim()) fd.append("title", title.trim());
         fd.append("file", file as File);
-        const resp = await api.post(`/admin/practice/ingest/upload`, fd, {
+        fd.append("model", "minimax/minimax-m2:free");
+        resp = await api.post(`/admin/practice/parse/upload`, fd, {
           headers: { "Content-Type": "multipart/form-data" },
         });
-        setResult({ count: resp.data.created_count ?? 0, set_id: resp.data.set_id });
-        onCreated?.({ count: resp.data.created_count ?? 0, set_id: resp.data.set_id });
       }
+      const parsed = resp.data.parsed;
+      // Normalize to items array regardless of content_type
+      let items: any[] = [];
+      if (contentType === "coding") items = parsed.exercises || parsed.questions || [];
+      else items = parsed.questions || parsed.exercises || [];
+      if (!items.length) {
+        setError("AI returned no items. Try with more detailed content.");
+        return;
+      }
+      setPreviewRaw(parsed);
+      setPreviewItems(items);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string; message?: string } } };
-      setError(e?.response?.data?.detail ?? e?.response?.data?.message ?? "Ingest failed. Please try again.");
+      setError(e?.response?.data?.detail ?? e?.response?.data?.message ?? "AI parse failed. Please try again.");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSaveEdited = async () => {
+    if (!previewItems) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const resp = await api.post(`/admin/practice/save`, {
+        content_type: contentType,
+        subject: subject.trim(),
+        title: title.trim() || undefined,
+        items: previewItems,
+        set_id: (previewRaw as any)?.set_id || undefined,
+      });
+      setResult({ count: resp.data.created_count ?? previewItems.length, set_id: resp.data.set_id });
+      onCreated?.({ count: resp.data.created_count ?? previewItems.length, set_id: resp.data.set_id });
+      setPreviewItems(null);
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string; message?: string } } };
+      setError(e?.response?.data?.detail ?? e?.response?.data?.message ?? "Save failed. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateItem = (idx: number, patch: any) => {
+    setPreviewItems((prev) => {
+      if (!prev) return prev;
+      const copy = [...prev];
+      copy[idx] = { ...copy[idx], ...patch };
+      return copy;
+    });
+  };
+  const removeItem = (idx: number) => {
+    setPreviewItems((prev) => prev ? prev.filter((_, i) => i !== idx) : prev);
+  };
+  const addItem = () => {
+    const blank = contentType === "coding"
+      ? { title: "New Exercise", description: "", language: "java", starter_code: "", solution_code: "", test_cases: [], difficulty: "easy" }
+      : contentType === "pyq"
+      ? { question: "New question", solution: "", marks: 5 }
+      : { question: "New question", options: ["A","B","C","D"], correct_index: 0, explanation: "", difficulty: "easy", topic: subject };
+    setPreviewItems((prev) => prev ? [...prev, blank] : [blank]);
   };
 
   const heading = TITLES[contentType].heading;
@@ -125,7 +183,7 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto animate-fadeIn">
-      <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-slate-100 overflow-hidden my-8">
+      <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl border border-slate-100 overflow-hidden my-8">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center flex-shrink-0">
@@ -146,7 +204,7 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
             <div className="w-14 h-14 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-3">
               <CheckCircle2 className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold text-slate-800">AI parsed and saved!</h3>
+            <h3 className="text-lg font-bold text-slate-800">Saved!</h3>
             <p className="text-sm text-slate-500 mt-1">
               {result.count} {contentType === "coding" ? "exercise" : "question"}{result.count === 1 ? "" : "s"} added
               {result.set_id ? ` to set ${result.set_id.slice(0, 8)}…` : ""}.
@@ -154,6 +212,75 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
             <button onClick={close} className="mt-6 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2 rounded-xl text-sm transition-colors">
               Done
             </button>
+          </div>
+        ) : previewItems ? (
+          <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-slate-800 flex items-center gap-2"><Pencil className="w-4 h-4 text-orange-500" /> Review & edit AI output ({previewItems.length} items)</p>
+              <button onClick={addItem} className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-full flex items-center gap-1"><Plus className="w-3 h-3" /> Add</button>
+            </div>
+            <p className="text-xs text-slate-500">Everything below is editable. Fix options, answers, or text before saving.</p>
+            <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+              {previewItems.map((it, idx) => (
+                <div key={idx} className="border border-slate-200 rounded-xl p-3 bg-slate-50/50">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-bold text-slate-700">#{idx+1}</span>
+                    <button onClick={() => removeItem(idx)} className="text-xs text-red-600 hover:bg-red-50 px-2 py-1 rounded"><Trash2 className="w-3 h-3 inline mr-1" />Remove</button>
+                  </div>
+                  {contentType === "coding" ? (
+                    <div className="space-y-2">
+                      <input value={it.title||""} onChange={(e)=>updateItem(idx,{title:e.target.value})} placeholder="Title" className="w-full border border-slate-200 rounded-lg px-2 py-1 text-sm text-slate-900 placeholder:text-slate-400" />
+                      <textarea value={it.description||""} onChange={(e)=>updateItem(idx,{description:e.target.value})} placeholder="Description" rows={2} className="w-full border border-slate-200 rounded-lg px-2 py-1 text-sm text-slate-900 placeholder:text-slate-400" />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input value={it.language||""} onChange={(e)=>updateItem(idx,{language:e.target.value})} placeholder="java" className="w-full border rounded px-2 py-1 text-xs text-slate-900" />
+                        <select value={it.difficulty||"easy"} onChange={(e)=>updateItem(idx,{difficulty:e.target.value})} className="w-full border rounded px-2 py-1 text-xs text-slate-900 bg-white">
+                          <option value="easy">easy</option><option value="medium">medium</option><option value="hard">hard</option>
+                        </select>
+                      </div>
+                      <textarea value={it.starter_code||""} onChange={(e)=>updateItem(idx,{starter_code:e.target.value})} placeholder="Starter code" rows={3} className="w-full border rounded px-2 py-1 text-xs font-mono text-slate-900" />
+                      <textarea value={it.solution_code||""} onChange={(e)=>updateItem(idx,{solution_code:e.target.value})} placeholder="Solution code" rows={3} className="w-full border rounded px-2 py-1 text-xs font-mono text-slate-900" />
+                    </div>
+                  ) : contentType === "pyq" ? (
+                    <div className="space-y-2">
+                      <textarea value={it.question||""} onChange={(e)=>updateItem(idx,{question:e.target.value})} rows={2} placeholder="Question" className="w-full border rounded px-2 py-1 text-sm text-slate-900" />
+                      <textarea value={it.solution||""} onChange={(e)=>updateItem(idx,{solution:e.target.value})} rows={3} placeholder="Solution" className="w-full border rounded px-2 py-1 text-sm text-slate-900" />
+                      <input type="number" value={it.marks||0} onChange={(e)=>updateItem(idx,{marks:parseInt(e.target.value)||0})} placeholder="Marks" className="w-24 border rounded px-2 py-1 text-xs text-slate-900" />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <textarea value={it.question||""} onChange={(e)=>updateItem(idx,{question:e.target.value})} rows={2} placeholder="Question" className="w-full border rounded px-2 py-1 text-sm text-slate-900" />
+                      {(it.options||[]).map((opt:string, oi:number)=>(
+                        <div key={oi} className="flex gap-2 items-center">
+                          <span className="text-xs font-bold w-5">{String.fromCharCode(65+oi)}</span>
+                          <input value={opt} onChange={(e)=>{ const n=[...(it.options||[])]; n[oi]=e.target.value; updateItem(idx,{options:n}); }} className="flex-1 border rounded px-2 py-1 text-sm text-slate-900" />
+                          <input type="radio" name={`correct-${idx}`} checked={it.correct_index===oi} onChange={()=>updateItem(idx,{correct_index:oi})} title="Correct" />
+                        </div>
+                      ))}
+                      <textarea value={it.explanation||""} onChange={(e)=>updateItem(idx,{explanation:e.target.value})} placeholder="Explanation" rows={2} className="w-full border rounded px-2 py-1 text-xs text-slate-900" />
+                      <div className="flex gap-2">
+                        <select value={it.difficulty||"easy"} onChange={(e)=>updateItem(idx,{difficulty:e.target.value})} className="border rounded px-2 py-1 text-xs text-slate-900 bg-white"><option value="easy">easy</option><option value="medium">medium</option><option value="hard">hard</option></select>
+                        <input value={it.topic||""} onChange={(e)=>updateItem(idx,{topic:e.target.value})} placeholder="Topic" className="flex-1 border rounded px-2 py-1 text-xs text-slate-900" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <p className="flex-1">{error}</p>
+              </div>
+            )}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+              <button onClick={()=>{setPreviewItems(null); setError(null);}} className="text-sm text-slate-600 hover:text-slate-800">← Back</button>
+              <div className="flex gap-2">
+                <button onClick={close} disabled={saving} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-xl">Cancel</button>
+                <button onClick={handleSaveEdited} disabled={saving} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold px-5 py-2 rounded-xl text-sm shadow-md">
+                  {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><CheckCircle2 className="w-4 h-4" /> Save {previewItems.length} items</>}
+                </button>
+              </div>
+            </div>
           </div>
         ) : !mode ? (
           <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -178,7 +305,7 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
           </div>
         ) : (
           <form
-            onSubmit={(e) => { e.preventDefault(); submit(); }}
+            onSubmit={(e) => { e.preventDefault(); handleParse(); }}
             className="p-6 space-y-4 max-h-[80vh] overflow-y-auto"
           >
             <div className="flex items-center gap-2 text-xs text-slate-500">
@@ -197,7 +324,7 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 required
-                className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
               />
             </div>
 
@@ -211,7 +338,7 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
                   placeholder="e.g. Java OOP Mastery Quiz"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
               </div>
             )}
@@ -235,7 +362,7 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   required
-                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm font-mono text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
               </div>
             ) : (
@@ -249,11 +376,11 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
                   accept="application/pdf"
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                   required
-                  className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-xl file:border-0 file:bg-orange-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-orange-600"
+                  className="block w-full text-sm text-slate-900 file:mr-3 file:rounded-xl file:border-0 file:bg-orange-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-orange-600"
                 />
                 {file && (
-                  <p className="text-xs text-slate-500 mt-2">
-                    Selected: <span className="font-medium">{file.name}</span> ({(file.size / 1024).toFixed(1)} KB)
+                  <p className="text-xs text-slate-900 mt-2">
+                    Selected: <span className="font-medium text-slate-900">{file.name}</span> ({(file.size / 1024).toFixed(1)} KB)
                   </p>
                 )}
               </div>
@@ -278,9 +405,7 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
               <button
                 type="submit"
                 disabled={submitting}
-                className={cn(
-                  "flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-semibold px-5 py-2 rounded-xl text-sm transition-colors shadow-md shadow-orange-500/20"
-                )}
+                className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-semibold px-5 py-2 rounded-xl text-sm transition-colors shadow-md shadow-orange-500/20"
               >
                 {submitting ? (
                   <>
@@ -290,7 +415,7 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
                 ) : (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    Run AI & save
+                    Parse with AI
                   </>
                 )}
               </button>
