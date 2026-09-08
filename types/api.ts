@@ -186,6 +186,9 @@ export interface AIChatSession {
   message_count: number;
   created_at: string;
   updated_at: string;
+  is_flagged?: boolean;
+  flag_reasons?: string[];
+  flagged_terms?: string[];
 }
 
 export interface AIChatMessage {
@@ -193,6 +196,10 @@ export interface AIChatMessage {
   content: string;
   timestamp: string;
   model?: string;
+  is_flagged?: boolean;
+  flag_reason?: string;
+  flag_reasons?: string[];
+  flagged_terms?: string[];
 }
 
 // ─── Code Execution Logs ──────────────────────────────────────────────────────
