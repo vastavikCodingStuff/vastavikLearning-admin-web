@@ -1,8 +1,16 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+.dark {
+  --background: #090d16;
+  --foreground: #f8fafc;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -12,15 +20,122 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ─── Global Dark Theme Overrides for Dashboard Components ─── */
+.dark .bg-white {
+  background-color: #0f172a !important; /* slate-900 */
+}
+
+.dark .bg-slate-50 {
+  background-color: #090d16 !important; /* slate-950 */
+}
+
+.dark .border-slate-100 {
+  border-color: #1e293b !important; /* slate-800 */
+}
+
+.dark .border-slate-200 {
+  border-color: #334155 !important; /* slate-700 */
+}
+
+.dark .text-slate-900,
+.dark .text-slate-800 {
+  color: #f8fafc !important; /* slate-50 */
+}
+
+.dark .text-slate-700 {
+  color: #e2e8f0 !important; /* slate-200 */
+}
+
+.dark .text-slate-600 {
+  color: #cbd5e1 !important; /* slate-300 */
+}
+
+.dark .text-slate-500 {
+  color: #94a3b8 !important; /* slate-400 */
+}
+
+.dark .text-slate-400 {
+  color: #64748b !important; /* slate-500 */
+}
+
+.dark .hover\:bg-slate-50:hover {
+  background-color: #1e293b !important;
+}
+
+.dark .hover\:bg-slate-100:hover {
+  background-color: #334155 !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: #1e293b !important;
+}
+
+/* Form Inputs & Selects in Dark Mode */
+.dark input:not([type="checkbox"]):not([type="radio"]),
+.dark textarea,
+.dark select {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* Table and Row Dark Styling */
+.dark tr.hover\:bg-slate-50\/80:hover,
+.dark tr.hover\:bg-slate-50:hover {
+  background-color: #1e293b !important;
+}
+
+.dark th {
+  background-color: #0f172a !important;
+  color: #94a3b8 !important;
+  border-color: #1e293b !important;
+}
+
+.dark td {
+  border-color: #1e293b !important;
+}
+
+/* Recharts Dark Tooltips and axes */
+.dark .recharts-default-tooltip {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.dark .recharts-cartesian-grid line {
+  stroke: #1e293b !important;
+}
+
+.dark .recharts-text {
+  fill: #94a3b8 !important;
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
