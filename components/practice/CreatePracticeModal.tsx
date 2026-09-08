@@ -5,7 +5,7 @@ import { X, FileText, FileUp, Sparkles, Loader2, CheckCircle2, AlertTriangle, Pe
 import api from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-type ContentType = "quiz" | "coding" | "mcq" | "pyq";
+type ContentType = "quiz" | "coding" | "mcq" | "pyq" | "predict_output";
 
 interface CreatePracticeModalProps {
   isOpen: boolean;
@@ -20,6 +20,12 @@ const TITLES: Record<ContentType, { heading: string; sub: string; subjectLabel: 
     sub: "Generate a set of multiple-choice questions, then optionally add to a named set.",
     subjectLabel: "Subject",
     subjectHint: "e.g. Java, Python, SQL",
+  },
+  predict_output: {
+    heading: "Add Predict the Output Sets",
+    sub: "Code snippet tracing problems with expected console output.",
+    subjectLabel: "Topic / Language",
+    subjectHint: "e.g. Loops & Control Flow, Strings, Arrays (Java/Python)",
   },
   mcq: {
     heading: "Add MCQs",
@@ -155,6 +161,7 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
       const parsed = resp.data.parsed;
       let items: any[] = [];
       if (contentType === "coding") items = parsed.exercises || parsed.questions || [];
+      else if (contentType === "predict_output") items = parsed.sets || parsed.questions || parsed.items || [];
       else items = parsed.questions || parsed.exercises || [];
       if (!items.length) {
         setError("AI returned no items. Try with more detailed content.");
@@ -215,6 +222,8 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
       ? { title: "New Exercise", description: "", language: "java", starter_code: "", solution_code: "", test_cases: [], difficulty: "easy" }
       : contentType === "pyq"
       ? { question: "New question", solution: "", marks: 5 }
+      : contentType === "predict_output"
+      ? { title: "Predict Output Problem", topic: subject || "General", question_count: "10 Questions", difficulty: "Easy", code_snippet: "// Code to trace\nint x = 5;\nSystem.out.println(x * 2);", expected_output: "10" }
       : { question: "New question", options: ["A","B","C","D"], correct_index: 0, explanation: "", difficulty: "easy", topic: subject };
     setPreviewItems((prev) => prev ? [...prev, blank] : [blank]);
   };
@@ -249,7 +258,7 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
             </div>
             <h3 className="text-lg font-bold text-slate-800">Saved!</h3>
             <p className="text-sm text-slate-500 mt-1">
-              {result.count} {contentType === "coding" ? "exercise" : "question"}{result.count === 1 ? "" : "s"} added
+              {result.count} {contentType === "coding" ? "exercise" : contentType === "predict_output" ? "set" : "question"}{result.count === 1 ? "" : "s"} added
               {result.set_id ? ` to set ${result.set_id.slice(0, 8)}…` : ""}.
             </p>
             <button onClick={close} className="mt-6 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-5 py-2 rounded-xl text-sm transition-colors">
@@ -288,6 +297,39 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
                       <textarea value={it.question||""} onChange={(e)=>updateItem(idx,{question:e.target.value})} rows={2} placeholder="Question" className="w-full border rounded px-2 py-1 text-sm text-slate-900" />
                       <textarea value={it.solution||""} onChange={(e)=>updateItem(idx,{solution:e.target.value})} rows={3} placeholder="Solution" className="w-full border rounded px-2 py-1 text-sm text-slate-900" />
                       <input type="number" value={it.marks||0} onChange={(e)=>updateItem(idx,{marks:parseInt(e.target.value)||0})} placeholder="Marks" className="w-24 border rounded px-2 py-1 text-xs text-slate-900" />
+                    </div>
+                  ) : contentType === "predict_output" ? (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[11px] font-semibold text-slate-600 block mb-1">Set Title</label>
+                          <input value={it.title||""} onChange={(e)=>updateItem(idx,{title:e.target.value})} placeholder="e.g. Loop Tracing & Conditionals" className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-slate-900" />
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-semibold text-slate-600 block mb-1">Topic</label>
+                          <input value={it.topic||""} onChange={(e)=>updateItem(idx,{topic:e.target.value})} placeholder="e.g. Loops & Control Flow" className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-slate-900" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[11px] font-semibold text-slate-600 block mb-1">Difficulty</label>
+                          <select value={it.difficulty||"Easy"} onChange={(e)=>updateItem(idx,{difficulty:e.target.value})} className="w-full border rounded-lg px-2 py-1.5 text-xs text-slate-900 bg-white">
+                            <option value="Easy">Easy</option><option value="Medium">Medium</option><option value="Hard">Hard</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-semibold text-slate-600 block mb-1">Question Count</label>
+                          <input value={it.question_count||"10 Questions"} onChange={(e)=>updateItem(idx,{question_count:e.target.value})} placeholder="e.g. 12 Questions" className="w-full border rounded-lg px-2 py-1.5 text-xs text-slate-900" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-semibold text-slate-600 block mb-1">Code Snippet to Trace</label>
+                        <textarea value={it.code_snippet||""} onChange={(e)=>updateItem(idx,{code_snippet:e.target.value})} placeholder="Code snippet..." rows={4} className="w-full border rounded-lg px-2.5 py-2 text-xs font-mono text-emerald-400 bg-slate-900" />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-semibold text-slate-600 block mb-1">Expected Console Output</label>
+                        <textarea value={it.expected_output||""} onChange={(e)=>updateItem(idx,{expected_output:e.target.value})} placeholder="Expected output string" rows={2} className="w-full border rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-900 bg-slate-100" />
+                      </div>
                     </div>
                   ) : (
                     <div className="space-y-2">

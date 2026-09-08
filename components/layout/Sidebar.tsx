@@ -46,6 +46,7 @@ const navItems = [
     icon: ClipboardList,
     children: [
       { title: "Quiz", href: "/dashboard/practice/quiz" },
+      { title: "Predict Output", href: "/dashboard/practice/predict-output" },
       { title: "Coding Exercises", href: "/dashboard/practice/coding" },
       { title: "MCQs", href: "/dashboard/practice/mcq" },
       { title: "Past Year Questions", href: "/dashboard/practice/pyq" },

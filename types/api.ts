@@ -163,6 +163,19 @@ export interface PYQ {
   marks: number;
 }
 
+export interface PredictOutputSet {
+  id: string;
+  set_number?: number;
+  title: string;
+  topic: string;
+  question_count?: string;
+  difficulty: "easy" | "medium" | "hard" | "Easy" | "Medium" | "Hard";
+  code_snippet: string;
+  expected_output?: string;
+  source?: "sir" | "ai";
+  created_at?: string;
+}
+
 // ─── AI Chat ─────────────────────────────────────────────────────────────────
 
 export interface AIChatSession {
