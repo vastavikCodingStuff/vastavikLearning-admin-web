@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, Search, Crown, ChevronRight } from "lucide-react";
+import { Users, Search, Crown, ChevronRight, Trash2 } from "lucide-react";
 import api from "@/lib/api";
 import { StudentProfile, PaginatedResponse } from "@/types/api";
 import { formatDate, cn } from "@/lib/utils";
@@ -30,6 +30,24 @@ export default function StudentsPage() {
   };
 
   useEffect(() => { load(page, search); }, [page, search]);
+
+  const handleDeleteStudent = async (uid: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete student "${name}"? This removes all their records.`)) return;
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            items: prev.items.filter((s) => s.uid !== uid),
+            total: Math.max(0, prev.total - 1),
+          }
+        : null
+    );
+    try {
+      await api.delete(`/admin/students/${uid}`);
+    } catch (err) {
+      console.error("Failed to delete student:", err);
+    }
+  };
 
   const students = data?.items ?? [];
 
@@ -141,12 +159,21 @@ export default function StudentsPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <Link
-                          href={`/dashboard/students/${s.uid}`}
-                          className="text-orange-500 hover:text-orange-600 flex items-center gap-1 text-xs font-medium"
-                        >
-                          View <ChevronRight className="w-3 h-3" />
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/dashboard/students/${s.uid}`}
+                            className="text-orange-500 hover:text-orange-600 flex items-center gap-1 text-xs font-medium"
+                          >
+                            View <ChevronRight className="w-3 h-3" />
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteStudent(s.uid, s.name)}
+                            className="p-1 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors"
+                            title="Delete Student"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
