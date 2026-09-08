@@ -93,29 +93,66 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
     }
     setSubmitting(true);
     setError(null);
-    try {
-      let resp;
-      if (mode === "write") {
-        resp = await api.post(`/admin/practice/parse`, {
-          content_type: contentType,
-          subject: subject.trim(),
-          title: title.trim() || undefined,
-          text: text.trim(),
-          model: "minimax/minimax-m2:free",
-        });
-      } else {
-        const fd = new FormData();
-        fd.append("content_type", contentType);
-        fd.append("subject", subject.trim());
-        if (title.trim()) fd.append("title", title.trim());
-        fd.append("file", file as File);
-        fd.append("model", "minimax/minimax-m2:free");
-        resp = await api.post(`/admin/practice/parse/upload`, fd, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+    // Helper to try parse endpoint, fallback to legacy ingest if backend not yet deployed (404)
+    const tryParse = async (): Promise<any> => {
+      try {
+        if (mode === "write") {
+          return await api.post(`/admin/practice/parse`, {
+            content_type: contentType,
+            subject: subject.trim(),
+            title: title.trim() || undefined,
+            text: text.trim(),
+            model: "minimax/minimax-m2:free",
+          });
+        } else {
+          const fd = new FormData();
+          fd.append("content_type", contentType);
+          fd.append("subject", subject.trim());
+          if (title.trim()) fd.append("title", title.trim());
+          fd.append("file", file as File);
+          fd.append("model", "minimax/minimax-m2:free");
+          return await api.post(`/admin/practice/parse/upload`, fd, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
+        }
+      } catch (err: any) {
+        const status = err?.response?.status;
+        if (status === 404) {
+          // Backend not yet deployed with new parse endpoint -> fallback to legacy ingest which exists live
+          // This directly saves; we show success without editable preview as graceful degradation
+          if (mode === "write") {
+            const fallback = await api.post(`/admin/practice/ingest`, {
+              content_type: contentType,
+              subject: subject.trim(),
+              title: title.trim() || undefined,
+              text: text.trim(),
+              model: "minimax/minimax-m2:free",
+            });
+            setResult({ count: fallback.data.created_count ?? 0, set_id: fallback.data.set_id });
+            onCreated?.({ count: fallback.data.created_count ?? 0, set_id: fallback.data.set_id });
+            return null; // signal fallback handled
+          } else {
+            const fd2 = new FormData();
+            fd2.append("content_type", contentType);
+            fd2.append("subject", subject.trim());
+            if (title.trim()) fd2.append("title", title.trim());
+            fd2.append("file", file as File);
+            fd2.append("model", "minimax/minimax-m2:free");
+            const fallback = await api.post(`/admin/practice/ingest/upload`, fd2, {
+              headers: { "Content-Type": "multipart/form-data" },
+            });
+            setResult({ count: fallback.data.created_count ?? 0, set_id: fallback.data.set_id });
+            onCreated?.({ count: fallback.data.created_count ?? 0, set_id: fallback.data.set_id });
+            return null;
+          }
+        }
+        throw err;
       }
+    };
+    try {
+      const resp = await tryParse();
+      if (!resp) return; // fallback already handled
       const parsed = resp.data.parsed;
-      // Normalize to items array regardless of content_type
       let items: any[] = [];
       if (contentType === "coding") items = parsed.exercises || parsed.questions || [];
       else items = parsed.questions || parsed.exercises || [];
@@ -126,8 +163,14 @@ export function CreatePracticeModal({ isOpen, onClose, contentType, onCreated }:
       setPreviewRaw(parsed);
       setPreviewItems(items);
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { detail?: string; message?: string } } };
-      setError(e?.response?.data?.detail ?? e?.response?.data?.message ?? "AI parse failed. Please try again.");
+      const e = err as { response?: { data?: { detail?: string; message?: string; status?: string } } };
+      // Surface PyPDF missing nicely if backend still old
+      const detail = e?.response?.data?.detail || "";
+      if (detail.includes("PyPDF2") || detail.includes("pypdf")) {
+        setError("PDF parser missing on server. Backend is redeploying with fix — try again in 1-2 minutes, or use Write mode.");
+      } else {
+        setError(e?.response?.data?.detail ?? e?.response?.data?.message ?? "AI parse failed. Please try again.");
+      }
     } finally {
       setSubmitting(false);
     }
