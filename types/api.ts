@@ -247,6 +247,61 @@ export interface CourseCompletionOverview {
   fully_completed_count: number;
 }
 
+// ─── Growth ───────────────────────────────────────────────────────────────────
+
+export interface GrowthOverview {
+  total_referral_codes: number;
+  total_shares: number;
+  total_referral_rewards_paid: number;
+  total_share_rewards_paid: number;
+  referral_reward_cap: number;
+  share_reward_cap: number;
+  referral_reward_inr: number;
+  share_reward_inr: number;
+}
+
+export interface GrowthReferral {
+  code: string;
+  uid: string;
+  user_name: string;
+  user_email: string;
+  created_at: string;
+  rewarded_count: number;
+  pending_count: number;
+}
+
+export interface GrowthShare {
+  token: string;
+  uid: string;
+  user_name: string;
+  user_email: string;
+  status: string;
+  clicks: number;
+  created_at: string;
+  rewarded_at: string | null;
+}
+
+export interface GrowthDevice {
+  uid: string;
+  user_name: string;
+  user_email: string;
+  active_device_id: string | null;
+  active_device_name: string | null;
+  active_platform: string | null;
+  bound_at: string | null;
+  last_seen_at: string | null;
+}
+
+export interface GrowthDeviceEvent {
+  uid: string;
+  event: string;
+  device_id: string;
+  prev_device_id: string | null;
+  platform: string;
+  flagged: boolean;
+  ts: string;
+}
+
 // ─── Admin System ─────────────────────────────────────────────────────────────
 
 export type RouteStatus = Record<string, boolean>;

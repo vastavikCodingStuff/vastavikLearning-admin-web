@@ -82,6 +82,11 @@ const navItems = [
     icon: BarChart3,
   },
   {
+    title: "Growth",
+    href: "/dashboard/growth",
+    icon: BarChart3,
+  },
+  {
     title: "System",
     href: "/dashboard/system",
     icon: Settings,
