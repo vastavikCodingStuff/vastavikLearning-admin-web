@@ -24,6 +24,7 @@ import { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { useSidebarStore } from "@/store/sidebarStore";
 import { cn } from "@/lib/utils";
+import { UiStyleSwitcher } from "@/components/layout/UiStyleSwitcher";
 
 const navItems = [
   {
@@ -193,21 +194,29 @@ function SidebarContent({
             );
           }
 
+          const isSystem = item.title === "System";
+
           return (
-            <Link
-              key={item.href}
-              href={item.href!}
-              onClick={onClose}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-                pathname === item.href
-                  ? "bg-orange-500 text-white font-medium"
-                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+            <div key={item.href || item.title}>
+              {isSystem && (
+                <div className="pt-3 pb-2 mb-1 border-t border-slate-800/80">
+                  <UiStyleSwitcher />
+                </div>
               )}
-            >
-              {item.icon && <item.icon className="w-4 h-4" />}
-              {item.title}
-            </Link>
+              <Link
+                href={item.href!}
+                onClick={onClose}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+                  pathname === item.href
+                    ? "bg-orange-500 text-white font-medium"
+                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                )}
+              >
+                {item.icon && <item.icon className="w-4 h-4" />}
+                {item.title}
+              </Link>
+            </div>
           );
         })}
       </nav>

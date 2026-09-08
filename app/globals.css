@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -138,4 +139,135 @@ body {
 }
 .dark ::-webkit-scrollbar-thumb:hover {
   background: #475569;
+}
+
+/* ─── Neo-Brutalist Design System ─── */
+.neobrutalism {
+  --neo-border-color: #000000;
+  --neo-shadow-color: #000000;
+}
+
+.neobrutalism.dark,
+.dark.neobrutalism,
+.dark .neobrutalism {
+  --neo-border-color: #64748b;
+  --neo-shadow-color: #000000;
+}
+
+/* Google Font Typography for Headlines, Metrics & Interactive Elements */
+.neobrutalism h1,
+.neobrutalism h2,
+.neobrutalism h3,
+.neobrutalism h4,
+.neobrutalism h5,
+.neobrutalism h6,
+.neobrutalism header h1,
+.neobrutalism .font-bold,
+.neobrutalism .font-semibold {
+  font-family: 'Roboto Slab', serif, system-ui !important;
+  letter-spacing: -0.015em;
+}
+
+/* Cards & Content Containers: 2px solid border, 4px bottom-right offset black shadow, 14-16px radius */
+.neobrutalism div.bg-white,
+.neobrutalism div[class*="rounded-xl"][class*="border"],
+.neobrutalism div[class*="rounded-2xl"][class*="border"] {
+  border: 2px solid var(--neo-border-color) !important;
+  box-shadow: 4px 4px 0px 0px var(--neo-shadow-color) !important;
+  border-radius: 16px !important;
+}
+
+/* Action Buttons: 2px border, 3px offset shadow, tactile translation on hover/press */
+.neobrutalism button:not([class*="recharts"]):not(.ui-switcher-pills button),
+.neobrutalism a[class*="bg-orange-500"],
+.neobrutalism a[class*="border"][class*="rounded"] {
+  border: 2px solid var(--neo-border-color) !important;
+  box-shadow: 3px 3px 0px 0px var(--neo-shadow-color) !important;
+  border-radius: 12px !important;
+  font-family: 'Roboto Slab', serif, system-ui;
+  font-weight: 700;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.neobrutalism button:not([class*="recharts"]):hover,
+.neobrutalism a[class*="bg-orange-500"]:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px 0px var(--neo-shadow-color) !important;
+}
+
+.neobrutalism button:not([class*="recharts"]):active,
+.neobrutalism a[class*="bg-orange-500"]:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px 0px var(--neo-shadow-color) !important;
+}
+
+/* Tables & Table Shell */
+.neobrutalism table {
+  border-collapse: separate;
+}
+
+.neobrutalism div:has(> table) {
+  border: 2px solid var(--neo-border-color) !important;
+  box-shadow: 4px 4px 0px 0px var(--neo-shadow-color) !important;
+  border-radius: 14px !important;
+  overflow: hidden;
+}
+
+.neobrutalism th {
+  border-bottom: 2px solid var(--neo-border-color) !important;
+  font-family: 'Roboto Slab', serif, system-ui !important;
+  font-weight: 800 !important;
+}
+
+.neobrutalism td {
+  border-bottom: 1.5px solid var(--neo-border-color) !important;
+}
+
+/* Inputs, Textareas & Selects */
+.neobrutalism input:not([type="checkbox"]):not([type="radio"]),
+.neobrutalism textarea,
+.neobrutalism select {
+  border: 2px solid var(--neo-border-color) !important;
+  box-shadow: 3px 3px 0px 0px var(--neo-shadow-color) !important;
+  border-radius: 12px !important;
+  font-family: 'Roboto Slab', serif, system-ui;
+}
+
+.neobrutalism input:focus,
+.neobrutalism textarea:focus,
+.neobrutalism select:focus {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px 0px var(--neo-shadow-color) !important;
+  outline: none !important;
+}
+
+/* Header & Sidebar Neobrutalist Separation */
+.neobrutalism header {
+  border-bottom: 2px solid var(--neo-border-color) !important;
+}
+
+.neobrutalism aside {
+  border-right: 2px solid var(--neo-border-color) !important;
+}
+
+/* Badges */
+.neobrutalism span[class*="rounded-full"] {
+  border: 1.5px solid var(--neo-border-color) !important;
+  box-shadow: 2px 2px 0px 0px var(--neo-shadow-color) !important;
+  font-weight: 700 !important;
+}
+
+/* Active Nav Links */
+.neobrutalism nav a[class*="bg-orange-500"] {
+  border: 2px solid #000000 !important;
+  box-shadow: 3px 3px 0px 0px #000000 !important;
+  border-radius: 12px !important;
+  font-weight: 800 !important;
+}
+
+/* Switcher container styling in Neobrutalism */
+.neobrutalism .ui-switcher-container {
+  border: 2px solid var(--neo-border-color) !important;
+  box-shadow: 3px 3px 0px 0px var(--neo-shadow-color) !important;
+  border-radius: 14px !important;
 }
