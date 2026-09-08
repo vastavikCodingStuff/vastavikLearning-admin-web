@@ -1,5 +1,5 @@
 import CryptoJS from "crypto-js";
-import axios, { AxiosInstance, InternalAxiosRequestConfig } from "axios";
+import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL || "https://vastaviklearning-backend-app.onrender.com";
@@ -23,9 +23,20 @@ function getStoredToken(): string | null {
   return localStorage.getItem("vastavik_admin_token");
 }
 
+function getStoredRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("vastavik_admin_refresh");
+}
+
+function isAuthEndpoint(url: string | undefined): boolean {
+  if (!url) return false;
+  // The HMAC path used during refresh is exactly /api/v1/auth/refresh (no query string).
+  return /\/auth\/(login|refresh|signup|oauth|device-verify)/.test(url);
+}
+
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE,
-  timeout: 10_000,
+  timeout: 15_000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -61,20 +72,126 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   return config;
 });
 
-// ── Response interceptor: global 401 → redirect to login ─────────────────────
+// ── Response interceptor: refresh-on-401, then sign-out only if refresh fails ─
+//
+// Important: a 401 used to clear the token and redirect to /login immediately,
+// which kicked admins out as soon as the 15-min access token expired (no
+// refresh was ever attempted). New behaviour:
+//
+//   1. If the failing call was an auth endpoint itself → return the error as-is
+//      (login failures should not trigger a self-refresh).
+//   2. If we have a refresh token, try POST /api/v1/auth/refresh exactly once.
+//      On success, swap the stored access token and replay the original request.
+//   3. Only when refresh itself fails do we clear tokens and redirect to /login.
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string) => void> = [];
+
+function onRefreshed(newToken: string) {
+  refreshSubscribers.forEach((cb) => cb(newToken));
+  refreshSubscribers = [];
+}
+
+function addRefreshSubscriber(cb: (token: string) => void) {
+  refreshSubscribers.push(cb);
+}
+
+async function performRefresh(): Promise<string | null> {
+  const refresh = getStoredRefreshToken();
+  if (!refresh) return null;
+  try {
+    const { timestamp, hmac } = generateHmac("POST", "/api/v1/auth/refresh");
+    const resp = await axios.post(
+      `${API_BASE}/api/v1/auth/refresh`,
+      { refresh_token: refresh },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key-id": API_KEY_ID,
+          "x-api-key-secret": API_KEY_SECRET,
+          "x-timestamp": timestamp,
+          "x-hmac": hmac,
+        },
+        timeout: 15_000,
+      }
+    );
+    const data = resp.data ?? {};
+    if (data.access_token) {
+      localStorage.setItem("vastavik_admin_token", data.access_token);
+      if (data.refresh_token) {
+        localStorage.setItem("vastavik_admin_refresh", data.refresh_token);
+      }
+      return data.access_token as string;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function clearLocalAuth() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem("vastavik_admin_token");
+  localStorage.removeItem("vastavik_admin_refresh");
+  localStorage.removeItem("vastavik_admin_user");
+}
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    // Only redirect if not already on the login page
-    if (
-      error.response?.status === 401 &&
-      typeof window !== "undefined" &&
-      !window.location.pathname.includes("/login")
-    ) {
-      localStorage.removeItem("vastavik_admin_token");
-      localStorage.removeItem("vastavik_admin_user");
-      window.location.href = "/login";
+  async (error: AxiosError) => {
+    const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+    const status = error.response?.status;
+
+    // 1. Auth-endpoint failures: surface as-is (don't try to refresh off a bad login).
+    if (status === 401 && originalRequest && isAuthEndpoint(originalRequest.url)) {
+      return Promise.reject(error);
     }
+
+    // 2. 401 on a regular request: try a single refresh + replay.
+    if (
+      status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      getStoredRefreshToken()
+    ) {
+      originalRequest._retry = true;
+
+      if (!isRefreshing) {
+        isRefreshing = true;
+        const newToken = await performRefresh();
+        isRefreshing = false;
+        if (newToken) {
+          onRefreshed(newToken);
+          originalRequest.headers = originalRequest.headers ?? {};
+          originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
+          return api(originalRequest);
+        }
+        // Refresh failed: fall through to sign-out.
+        clearLocalAuth();
+        if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
+          window.location.href = "/login";
+        }
+        return Promise.reject(error);
+      }
+
+      // Another request is already refreshing — queue and replay when it finishes.
+      return new Promise((resolve, reject) => {
+        addRefreshSubscriber((newToken) => {
+          originalRequest.headers = originalRequest.headers ?? {};
+          originalRequest.headers["Authorization"] = `Bearer ${newToken}`;
+          resolve(api(originalRequest));
+        });
+        setTimeout(() => reject(error), 15_000);
+      });
+    }
+
+    // 3. 401 with no refresh token: classic sign-out.
+    if (status === 401) {
+      clearLocalAuth();
+      if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
+        window.location.href = "/login";
+      }
+    }
+
     return Promise.reject(error);
   }
 );
