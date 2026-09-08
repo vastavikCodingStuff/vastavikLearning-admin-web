@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
+import { HealthBanner } from "@/components/layout/HealthBanner";
 import { useAuthStore } from "@/store/authStore";
 import { getToken, getAdminUser } from "@/lib/auth";
 
@@ -47,7 +48,10 @@ export default function DashboardLayout({
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <Header />
-        <main className="flex-1 p-3 sm:p-5 md:p-6 overflow-x-hidden overflow-y-auto">{children}</main>
+        <main className="flex-1 p-3 sm:p-5 md:p-6 overflow-x-hidden overflow-y-auto space-y-4">
+          <HealthBanner />
+          {children}
+        </main>
       </div>
     </div>
   );
