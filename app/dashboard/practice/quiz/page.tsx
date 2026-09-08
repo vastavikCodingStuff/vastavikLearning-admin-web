@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, ClipboardList, Search, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, ClipboardList, Search, ChevronDown, ChevronUp, RefreshCcw } from "lucide-react";
 import api from "@/lib/api";
 import { QuizSet, QuizQuestion } from "@/types/api";
 import { formatDate } from "@/lib/utils";
+import { CreatePracticeModal } from "@/components/practice/CreatePracticeModal";
 
 export default function PracticeQuizPage() {
   const [sets, setSets] = useState<QuizSet[]>([]);
@@ -12,19 +13,21 @@ export default function PracticeQuizPage() {
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
 
-  useEffect(() => {
-    api.get<{ sets: QuizSet[] }>("/admin/practice/quiz")
-      .then((r) => setSets(r.data.sets ?? []))
-      .catch(() => {
-        setSets([
-          { id: "qs1", title: "OOP Basics Quiz", subject: "Java", question_count: 10, created_at: new Date().toISOString() },
-          { id: "qs2", title: "Python Loops & Functions", subject: "Python", question_count: 8, created_at: new Date(Date.now() - 86400000).toISOString() },
-          { id: "qs3", title: "SQL SELECT Mastery", subject: "SQL", question_count: 12, created_at: new Date(Date.now() - 172800000).toISOString() },
-        ]);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await api.get<{ sets: QuizSet[] }>("/admin/practice/quiz");
+      setSets(r.data.sets ?? []);
+    } catch {
+      setSets([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
 
   const toggleSet = async (setId: string) => {
     if (expanded === setId) { setExpanded(null); return; }
@@ -34,11 +37,7 @@ export default function PracticeQuizPage() {
       const r = await api.get<{ questions: QuizQuestion[] }>(`/admin/practice/quiz/${setId}/questions`);
       setQuestions((prev) => ({ ...prev, [setId]: r.data.questions ?? [] }));
     } catch {
-      setQuestions((prev) => ({
-        ...prev, [setId]: [
-          { id: "q1", set_id: setId, question: "What does OOP stand for?", options: ["Object Oriented Programming", "Open Object Program", "Ordered Object Protocol", "None"], correct_index: 0, explanation: "OOP = Object Oriented Programming.", subject: "Java", difficulty: "easy", created_at: new Date().toISOString() },
-        ]
-      }));
+      setQuestions((prev) => ({ ...prev, [setId]: [] }));
     }
   };
 
@@ -66,10 +65,29 @@ export default function PracticeQuizPage() {
             className="pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 w-full"
           />
         </div>
-        <button className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full sm:w-auto">
-          <Plus className="w-4 h-4" /> New Quiz Set
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={load}
+            className="flex items-center gap-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 px-3 py-2 rounded-lg text-sm transition-colors"
+            title="Refresh from backend"
+          >
+            <RefreshCcw className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full sm:w-auto"
+          >
+            <Plus className="w-4 h-4" /> New Quiz Set
+          </button>
+        </div>
       </div>
+
+      <CreatePracticeModal
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+        contentType="quiz"
+        onCreated={() => load()}
+      />
 
       <div className="space-y-3">
         {loading
@@ -79,6 +97,13 @@ export default function PracticeQuizPage() {
                 <div className="h-3 bg-slate-100 rounded w-1/4" />
               </div>
             ))
+          : filtered.length === 0
+          ? (
+            <div className="text-center py-16 text-slate-400">
+              <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-40" />
+              <p className="text-sm">No quiz sets yet. Click <span className="font-semibold text-orange-500">+ New Quiz Set</span> to add one.</p>
+            </div>
+          )
           : filtered.map((set) => (
               <div key={set.id} className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
                 <button
@@ -94,6 +119,9 @@ export default function PracticeQuizPage() {
                 </button>
                 {expanded === set.id && (
                   <div className="border-t border-slate-100 divide-y divide-slate-50">
+                    {(questions[set.id] ?? []).length === 0 && (
+                      <div className="px-5 py-4 text-xs text-slate-400">No questions in this set yet.</div>
+                    )}
                     {(questions[set.id] ?? []).map((q, qi) => (
                       <div key={q.id} className="px-5 py-4">
                         <div className="flex items-start gap-3">
@@ -110,8 +138,8 @@ export default function PracticeQuizPage() {
                               ))}
                             </div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${diffColor[q.difficulty]}`}>{q.difficulty}</span>
-                              <p className="text-xs text-slate-400 italic">{q.explanation}</p>
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${diffColor[q.difficulty] ?? diffColor.easy}`}>{q.difficulty}</span>
+                              {q.explanation && <p className="text-xs text-slate-400 italic">{q.explanation}</p>}
                             </div>
                           </div>
                         </div>

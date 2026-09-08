@@ -49,9 +49,16 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     let path = config.url ?? "";
     if (path.startsWith("http://") || path.startsWith("https://")) {
       const parsed = new URL(path);
-      path = parsed.pathname + (parsed.search || "");
-    } else if (!path.startsWith("/")) {
-      path = "/" + path;
+      // HMAC the pathname ONLY (no query string) — the backend's
+      // verify_hmac_headers in app/core/security.py signs
+      // `request.url.path` (no query string), so anything we sign with
+      // `?foo=bar` will 401 and silently break every paginated/filtered
+      // admin call. See lib/api.ts history for the post-mortem.
+      path = parsed.pathname;
+    } else {
+      const qIdx = path.indexOf("?");
+      if (qIdx >= 0) path = path.slice(0, qIdx);
+      if (!path.startsWith("/")) path = "/" + path;
     }
 
     const { timestamp, hmac } = generateHmac(method, path);
