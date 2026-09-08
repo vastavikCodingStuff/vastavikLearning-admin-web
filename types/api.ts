@@ -39,6 +39,21 @@ export interface StudentProfile {
   payment_details?: PaymentDetail[];
 }
 
+export interface ArchivedStudent {
+  uid: string;
+  email: string;
+  name: string;
+  status: string;
+  reason: string;
+  archived_at: string;
+  banned_by: string;
+  notes_count?: number;
+  transactions_count?: number;
+  chats_count?: number;
+  user_data?: Record<string, any>;
+  student_selections?: Record<string, any>;
+}
+
 export interface PaymentDetail {
   order_id: string;
   plan_id: string;
