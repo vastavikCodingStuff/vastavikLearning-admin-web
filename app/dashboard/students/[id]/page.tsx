@@ -40,8 +40,15 @@ export default function StudentDetailPage() {
                 </span>
               )}
             </div>
-            <p className="text-slate-500 text-sm mt-0.5 break-all sm:break-normal">{student.email}</p>
+            <p className="text-slate-500 text-sm mt-0.5 break-all sm:break-normal">
+              {student.school ? `${student.school} · ` : ""}{student.email}
+            </p>
             <div className="flex flex-wrap gap-2 mt-3">
+              {student.enrolled_course && (
+                <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full font-medium">
+                  Enrolled: {student.enrolled_course}
+                </span>
+              )}
               <span className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">
                 {student.board}
               </span>

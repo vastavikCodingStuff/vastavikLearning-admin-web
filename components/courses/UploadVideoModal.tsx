@@ -156,7 +156,7 @@ export function UploadVideoModal({
                 placeholder="e.g. Object Oriented Programming — Class & Object Foundations"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
               />
             </div>
 
@@ -213,7 +213,7 @@ export function UploadVideoModal({
                   placeholder="e.g. https://youtu.be/abc123xyz or https://www.youtube.com/watch?v=..."
                   value={youtubeInput}
                   onChange={(e) => setYoutubeInput(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono text-xs"
+                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono text-xs"
                 />
               </div>
               <p className="text-xs text-slate-400 mt-1">
@@ -243,11 +243,11 @@ export function UploadVideoModal({
                 <select
                   value={courseId}
                   onChange={(e) => setCourseId(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
                 >
-                  <option value="">Standalone / Unassigned</option>
+                  <option value="" className="text-slate-900">Standalone / Unassigned</option>
                   {courses.map((c) => (
-                    <option key={c.id} value={c.id}>
+                    <option key={c.id} value={c.id} className="text-slate-900">
                       {c.title}
                     </option>
                   ))}
@@ -263,7 +263,7 @@ export function UploadVideoModal({
                   min={1}
                   value={durationMins}
                   onChange={(e) => setDurationMins(Number(e.target.value))}
-                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
               </div>
             </div>
@@ -304,7 +304,7 @@ export function UploadVideoModal({
                 placeholder="Key concepts discussed in this video lesson..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
               />
             </div>
 
@@ -318,7 +318,7 @@ export function UploadVideoModal({
                 placeholder="Markdown or key formulas for students to review..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm font-mono text-xs focus:outline-none focus:ring-2 focus:ring-orange-400"
+                className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm font-mono text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
               />
             </div>
 

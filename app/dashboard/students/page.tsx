@@ -10,31 +10,21 @@ import Link from "next/link";
 export default function StudentsPage() {
   const [data, setData] = useState<PaginatedResponse<StudentProfile> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
   const load = (p: number, q: string) => {
     setLoading(true);
+    setError(null);
     api.get<PaginatedResponse<StudentProfile>>("/admin/students", {
       params: { page: p, page_size: 20, search: q },
     })
       .then((r) => setData(r.data))
-      .catch(() => {
-        // Mock data if backend endpoint not live
-        const mockStudents: StudentProfile[] = Array.from({ length: 8 }, (_, i) => ({
-          uid: `uid_${i}`,
-          name: ["Parth Shah", "Ananya Mehta", "Rohan Gupta", "Priya Iyer", "Arnav Das", "Sneha Joshi", "Vikram Pillai", "Meera Nair"][i],
-          email: `student${i}@example.com`,
-          role: "student",
-          board: i % 2 === 0 ? "ICSE" : "CBSE",
-          preferred_language: ["Java", "Python", "JavaScript", "Java", "Python", "SQL", "Java", "Python"][i],
-          is_premium: i % 3 === 0,
-          subscription_expires_at: i % 3 === 0 ? "2027-01-01T00:00:00Z" : null,
-          streak_count: Math.floor(Math.random() * 30),
-          lessons_completed: Math.floor(Math.random() * 50),
-          created_at: new Date(Date.now() - i * 86400000 * 7).toISOString(),
-        }));
-        setData({ items: mockStudents, total: 247, page: 1, page_size: 20, has_more: true });
+      .catch((err) => {
+        console.error("Failed to load students:", err);
+        setError("Could not connect to database to fetch students. Ensure the backend is online.");
+        setData({ items: [], total: 0, page: 1, page_size: 20, has_more: false });
       })
       .finally(() => setLoading(false));
   };
@@ -45,13 +35,26 @@ export default function StudentsPage() {
 
   return (
     <div className="space-y-5">
+      {/* Error notification */}
+      {error && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-xs flex items-center justify-between">
+          <span>{error}</span>
+          <button
+            onClick={() => load(page, search)}
+            className="font-semibold underline ml-3 hover:text-amber-900 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative w-full sm:w-72">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search by name or email…"
+            placeholder="Search name, school, board, course…"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 w-full"
@@ -66,7 +69,7 @@ export default function StudentsPage() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
-                {["Student", "Board", "Language", "Streak", "Completed", "Joined", "Plan", ""].map((h) => (
+                {["Student", "Enrolled Course", "Board", "Language", "Streak", "Completed", "Joined", "Plan", ""].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                     {h}
                   </th>
@@ -77,13 +80,21 @@ export default function StudentsPage() {
               {loading
                 ? Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
-                      {Array.from({ length: 8 }).map((_, j) => (
+                      {Array.from({ length: 9 }).map((_, j) => (
                         <td key={j} className="px-4 py-3">
                           <div className="h-4 bg-slate-100 rounded animate-pulse w-20" />
                         </td>
                       ))}
                     </tr>
                   ))
+                : students.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="text-center py-12 text-slate-400">
+                        <Users className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                        No students found.
+                      </td>
+                    </tr>
+                  )
                 : students.map((s) => (
                     <tr key={s.uid} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-3">
@@ -93,21 +104,32 @@ export default function StudentsPage() {
                           </div>
                           <div>
                             <p className="font-medium text-slate-800">{s.name}</p>
-                            <p className="text-xs text-slate-400">{s.email}</p>
+                            <p className="text-xs text-slate-400">
+                              {s.school ? `${s.school} · ` : ""}{s.email}
+                            </p>
                           </div>
                         </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {s.enrolled_course ? (
+                          <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            {s.enrolled_course}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <span className={cn(
                           "text-xs px-2 py-0.5 rounded-full font-medium",
                           s.board === "ICSE" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"
                         )}>
-                          {s.board}
+                          {s.board} {s.class_grade ? `· ${s.class_grade}` : ""}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-slate-600 text-xs">{s.preferred_language}</td>
                       <td className="px-4 py-3 text-slate-700 font-medium">{s.streak_count}🔥</td>
-                      <td className="px-4 py-3 text-slate-600">{s.lessons_completed}</td>
+                      <td className="px-4 py-3 text-slate-600 font-medium">{s.lessons_completed} lessons</td>
                       <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">{formatDate(s.created_at)}</td>
                       <td className="px-4 py-3">
                         {s.is_premium ? (

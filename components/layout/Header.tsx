@@ -54,7 +54,7 @@ export function Header() {
           <input
             type="text"
             placeholder="Search…"
-            className="pl-9 pr-3 sm:pr-4 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 w-32 sm:w-48 md:w-56 transition-all"
+            className="pl-9 pr-3 sm:pr-4 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 w-32 sm:w-48 md:w-56 transition-all text-slate-900 placeholder:text-slate-400"
           />
         </div>
         <button

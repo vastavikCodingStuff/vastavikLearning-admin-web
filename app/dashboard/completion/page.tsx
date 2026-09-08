@@ -7,7 +7,7 @@ import {
 } from "recharts";
 import api from "@/lib/api";
 import { CourseCompletionOverview, CompletionStat } from "@/types/api";
-import { completionColor, cn } from "@/lib/utils";
+import { completionColor, cn, formatDate } from "@/lib/utils";
 
 export default function CompletionPage() {
   const [overview, setOverview] = useState<CourseCompletionOverview[]>([]);
@@ -23,19 +23,10 @@ export default function CompletionPage() {
         setOverview(ov.data.overview ?? []);
         setTopStudents(st.data.stats ?? []);
       })
-      .catch(() => {
-        setOverview([
-          { course_id: "c1", course_title: "Java for ICSE Class 10", enrolled_students: 142, avg_completion_percent: 68, fully_completed_count: 23 },
-          { course_id: "c2", course_title: "Python Basics", enrolled_students: 89, avg_completion_percent: 52, fully_completed_count: 11 },
-          { course_id: "c3", course_title: "JavaScript Essentials", enrolled_students: 47, avg_completion_percent: 41, fully_completed_count: 5 },
-          { course_id: "c4", course_title: "SQL & Databases", enrolled_students: 63, avg_completion_percent: 78, fully_completed_count: 31 },
-        ]);
-        setTopStudents([
-          { uid: "uid_0", student_name: "Parth Shah", course_id: "c1", course_title: "Java for ICSE", total_parts: 24, completed_parts: 24, completion_percent: 100, last_activity: new Date().toISOString() },
-          { uid: "uid_1", student_name: "Ananya Mehta", course_id: "c4", course_title: "SQL & Databases", total_parts: 18, completed_parts: 16, completion_percent: 89, last_activity: new Date(Date.now() - 86400000).toISOString() },
-          { uid: "uid_2", student_name: "Rohan Gupta", course_id: "c2", course_title: "Python Basics", total_parts: 20, completed_parts: 17, completion_percent: 85, last_activity: new Date(Date.now() - 172800000).toISOString() },
-          { uid: "uid_3", student_name: "Priya Iyer", course_id: "c1", course_title: "Java for ICSE", total_parts: 24, completed_parts: 19, completion_percent: 79, last_activity: new Date(Date.now() - 259200000).toISOString() },
-        ]);
+      .catch((err) => {
+        console.error("Failed to load completion stats:", err);
+        setOverview([]);
+        setTopStudents([]);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -55,6 +46,11 @@ export default function CompletionPage() {
         </div>
         {loading ? (
           <div className="h-52 bg-slate-50 rounded-lg animate-pulse" />
+        ) : overview.length === 0 ? (
+          <div className="h-44 flex flex-col items-center justify-center text-slate-400 text-sm">
+            <BarChart3 className="w-8 h-8 mb-2 opacity-30" />
+            No course completion data recorded yet.
+          </div>
         ) : (
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={overview} layout="vertical">
@@ -121,29 +117,37 @@ export default function CompletionPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {topStudents.map((s) => (
-                <tr key={`${s.uid}-${s.course_id}`} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-slate-800 text-sm whitespace-nowrap">{s.student_name}</td>
-                  <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">{s.course_title}</td>
-                  <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{s.completed_parts}/{s.total_parts} parts</td>
-                  <td className="px-4 py-3 min-w-[140px]">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-slate-100 rounded-full h-1.5">
-                        <div
-                          className="h-1.5 rounded-full bg-green-500"
-                          style={{ width: `${s.completion_percent}%` }}
-                        />
-                      </div>
-                      <span className={`text-xs font-semibold ${completionColor(s.completion_percent)}`}>
-                        {s.completion_percent}%
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">
-                    {new Date(s.last_activity).toLocaleDateString("en-IN")}
+              {topStudents.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="text-center py-8 text-slate-400 text-sm">
+                    No top student data recorded yet.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                topStudents.map((s) => (
+                  <tr key={`${s.uid}-${s.course_id}`} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-3 font-medium text-slate-800 text-sm whitespace-nowrap">{s.student_name}</td>
+                    <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">{s.course_title}</td>
+                    <td className="px-4 py-3 text-xs text-slate-500 whitespace-nowrap">{s.completed_parts}/{s.total_parts} parts</td>
+                    <td className="px-4 py-3 min-w-[140px]">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-slate-100 rounded-full h-1.5">
+                          <div
+                            className="h-1.5 rounded-full bg-green-500"
+                            style={{ width: `${s.completion_percent}%` }}
+                          />
+                        </div>
+                        <span className={`text-xs font-semibold ${completionColor(s.completion_percent)}`}>
+                          {s.completion_percent}%
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">
+                      {s.last_activity ? formatDate(s.last_activity) : "—"}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

@@ -26,12 +26,9 @@ export default function BugReportsPage() {
     setLoading(true);
     api.get<{ reports: BugReport[] }>("/admin/bug-reports")
       .then((r) => setReports(r.data.reports ?? []))
-      .catch(() => {
-        setReports([
-          { id: "br1", ticket_id: "VBUG-A1B2C", uid: "uid_0", student_name: "Parth Shah", title: "App crashes on code editor open", description: "When I open the code editor screen and try to run Java code, the app crashes with a NullPointerException.", category: "crash", device_diagnostics: "Android 14, Pixel 6a, vastavik-v2.1.0", media_urls: [], status: "open", created_at: new Date().toISOString() },
-          { id: "br2", ticket_id: "VBUG-D3E4F", uid: "uid_1", student_name: "Ananya Mehta", title: "Video not loading on slow connection", description: "On 2G network, the video lesson screen shows infinite loading spinner.", category: "performance", device_diagnostics: "Android 12, Samsung A52", media_urls: [], status: "in_progress", created_at: new Date(Date.now() - 86400000).toISOString() },
-          { id: "br3", ticket_id: "VBUG-G5H6I", uid: "uid_2", student_name: "Rohan Gupta", title: "Dark mode text not visible", description: "In dark mode, the quiz question text is black on dark background.", category: "ui", device_diagnostics: "Android 13, OnePlus 9", media_urls: [], status: "resolved", created_at: new Date(Date.now() - 172800000).toISOString(), resolved_at: new Date(Date.now() - 86400000).toISOString() },
-        ]);
+      .catch((err) => {
+        console.error("Failed to load bug reports:", err);
+        setReports([]);
       })
       .finally(() => setLoading(false));
   };
@@ -101,6 +98,12 @@ export default function BugReportsPage() {
                 <div className="h-3 bg-slate-100 rounded w-3/4" />
               </div>
             ))
+          : filtered.length === 0 ? (
+              <div className="text-center py-16 text-slate-400 bg-white rounded-xl border border-slate-100">
+                <Bug className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">No bug reports found.</p>
+              </div>
+            )
           : filtered.map((report) => {
               const Icon = statusIcon[report.status];
               return (
