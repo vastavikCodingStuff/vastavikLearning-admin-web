@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   MessageSquare,
   Bot,
@@ -20,6 +22,9 @@ import { formatDate, cn } from "@/lib/utils";
 import { MarkdownMessage } from "@/components/chat/MarkdownMessage";
 
 export default function AiChatsPage() {
+  const searchParams = useSearchParams();
+  const filterUid = searchParams.get("uid");
+
   const [sessions, setSessions] = useState<AIChatSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<AIChatSession | null>(null);
@@ -30,7 +35,8 @@ export default function AiChatsPage() {
 
   const loadSessions = () => {
     setLoading(true);
-    api.get<{ sessions: AIChatSession[]; total: number; flagged_count?: number }>("/admin/ai-chats")
+    const url = filterUid ? `/admin/ai-chats?uid=${encodeURIComponent(filterUid)}` : "/admin/ai-chats";
+    api.get<{ sessions: AIChatSession[]; total: number; flagged_count?: number }>(url)
       .then((r) => setSessions(r.data.sessions ?? []))
       .catch((err) => {
         console.error("Failed to load AI chat sessions:", err);
@@ -41,7 +47,7 @@ export default function AiChatsPage() {
 
   useEffect(() => {
     loadSessions();
-  }, []);
+  }, [filterUid]);
 
   const openSession = (session: AIChatSession) => {
     setSelected(session);
@@ -107,6 +113,12 @@ export default function AiChatsPage() {
       )}>
         {/* Header & Filter Tabs */}
         <div className="space-y-2 mb-3 flex-shrink-0">
+          {filterUid && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-2.5 flex items-center justify-between text-xs text-orange-900">
+              <span>Filtered for UID: <strong className="font-mono">{filterUid}</strong></span>
+              <Link href="/dashboard/ai-chats" className="underline font-semibold hover:text-orange-700 ml-2">Clear</Link>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
