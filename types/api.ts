@@ -19,6 +19,54 @@ export interface AdminUser {
 
 // ─── Students ────────────────────────────────────────────────────────────────
 
+export interface StudentActivity {
+  id: string;
+  uid?: string;
+  student_name?: string;
+  student_email?: string;
+  event: string;
+  query?: string;
+  response?: string;
+  metadata?: Record<string, any>;
+  timestamp?: string;
+  received_at?: string;
+}
+
+export interface StudentSearchItem {
+  id: string;
+  uid?: string;
+  query: string;
+  is_flagged?: boolean;
+  flag_reasons?: string[];
+  flagged_terms?: string[];
+  created_at: string;
+}
+
+export interface StudentPracticeAttempt {
+  id: string;
+  uid?: string;
+  type: "mcq" | "predict_output" | "coding" | "quiz" | string;
+  topic?: string;
+  difficulty?: string;
+  language?: string;
+  question?: string;
+  options?: string[];
+  selected_option?: any;
+  correct_option?: any;
+  code_snippet?: string;
+  predicted_output?: string;
+  actual_output?: string;
+  problem_title?: string;
+  solution_code?: string;
+  user_code?: string;
+  verdict?: string;
+  is_correct?: boolean;
+  score?: number;
+  total_questions?: number;
+  explanation?: string;
+  created_at: string;
+}
+
 export interface StudentProfile {
   uid: string;
   name: string;
@@ -37,6 +85,11 @@ export interface StudentProfile {
   enrolled_course?: string | null;
   enrolled_course_id?: string | null;
   payment_details?: PaymentDetail[];
+  activities?: StudentActivity[];
+  searches?: StudentSearchItem[];
+  practice_history?: StudentPracticeAttempt[];
+  ai_chats?: AIChatSession[];
+  code_executions?: CodeExecutionLog[];
 }
 
 export interface ArchivedStudent {
@@ -197,8 +250,10 @@ export interface AIChatSession {
   session_id: string;
   uid: string;
   student_name: string;
+  title?: string;
   model_used: string;
   message_count: number;
+  messages?: AIChatMessage[];
   created_at: string;
   updated_at: string;
   is_flagged?: boolean;
