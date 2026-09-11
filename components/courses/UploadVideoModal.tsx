@@ -55,6 +55,7 @@ export function UploadVideoModal({
   const [shortsUrl, setShortsUrl] = useState("");
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
+  const [uploadingWb, setUploadingWb] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -339,26 +340,52 @@ export function UploadVideoModal({
               </div>
             </div>
 
-            {/* Whiteboard Image URL — only for whiteboard type */}
-            {videoType === "whiteboard" && (
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Whiteboard Image URL (Optional)
-                </label>
+            {/* Whiteboard — URL + file upload, always alongside video link */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Whiteboard Screenshot (Optional) — admin preview only, students see it in the Whiteboard tab
+              </label>
+              <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="https://example.com/whiteboard.png or upload to /uploads"
+                  placeholder="https://example.com/whiteboard.png or upload below"
                   value={whiteboardUrl}
                   onChange={(e) => setWhiteboardUrl(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  className="flex-1 border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
                 />
-                {whiteboardUrl && (
-                  <div className="mt-2 rounded-xl overflow-hidden border border-slate-200 max-h-48">
-                    <img src={whiteboardUrl} alt="Whiteboard preview" className="w-full h-auto object-contain" onError={(e) => ((e.target as HTMLImageElement).style.display = "none")} />
-                  </div>
-                )}
+                <label className="px-4 py-2 text-sm bg-slate-100 hover:bg-slate-200 rounded-xl cursor-pointer font-medium text-slate-700 whitespace-nowrap">
+                  {uploadingWb ? "Uploading..." : "Upload image"}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    disabled={uploadingWb}
+                    onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      if (!f) return;
+                      setUploadingWb(true);
+                      try {
+                        const fd = new FormData();
+                        fd.append("file", f);
+                        const r = await api.post("/api/v1/admin/uploads/whiteboard", fd, {
+                          headers: { "Content-Type": "multipart/form-data" },
+                        });
+                        if (r.data?.url) setWhiteboardUrl(r.data.url);
+                      } catch {
+                        alert("Whiteboard upload failed. Paste an image URL instead.");
+                      } finally {
+                        setUploadingWb(false);
+                      }
+                    }}
+                  />
+                </label>
               </div>
-            )}
+              {whiteboardUrl && (
+                <div className="mt-2 rounded-xl overflow-hidden border border-slate-200 max-h-48">
+                  <img src={whiteboardUrl} alt="Whiteboard preview (admin only)" className="w-full h-auto object-contain" onError={(e) => ((e.target as HTMLImageElement).style.display = "none")} />
+                </div>
+              )}
+            </div>
 
             {/* Code Sample — for Code tab */}
             <div>
@@ -375,21 +402,20 @@ export function UploadVideoModal({
               <p className="text-xs text-slate-400 mt-1">Shown in the Code tab; supports Java/Python/C/C++ syntax highlight.</p>
             </div>
 
-            {/* Shorts URL — only for short type */}
-            {videoType === "short" && (
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Shorts URL (Optional — defaults to YouTube URL)
-                </label>
-                <input
-                  type="text"
-                  placeholder="https://www.youtube.com/shorts/abc123"
-                  value={shortsUrl}
-                  onChange={(e) => setShortsUrl(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono text-xs"
-                />
-              </div>
-            )}
+            {/* Shorts URL — always alongside video link */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Shorts URL (Optional — used when type is Short; defaults to YouTube URL)
+              </label>
+              <input
+                type="text"
+                placeholder="https://www.youtube.com/shorts/abc123"
+                value={shortsUrl}
+                onChange={(e) => setShortsUrl(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono text-xs"
+              />
+              <p className="text-xs text-slate-400 mt-1">Pick type “Short” above + paste a youtube.com/shorts/... link for vertical playback.</p>
+            </div>
 
             {/* Description */}
             <div>

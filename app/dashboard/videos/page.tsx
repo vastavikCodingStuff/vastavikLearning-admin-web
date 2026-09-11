@@ -286,9 +286,23 @@ export default function VideosPage() {
 
                 <div className="p-4 flex-1 flex flex-col justify-between">
                   <div>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${type.color}`}>
-                      {type.label}
-                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${type.color}`}>
+                        {type.label}
+                      </span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${video.privacy === "private" ? "bg-red-100 text-red-700" : video.privacy === "public" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"}`}>
+                        {video.privacy ?? "unlisted"}
+                      </span>
+                      {video.whiteboard_image_url ? (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700">whiteboard</span>
+                      ) : null}
+                      {video.code_sample ? (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700">code</span>
+                      ) : null}
+                      {video.is_published === false ? (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700">draft</span>
+                      ) : null}
+                    </div>
                     <h3 className="font-semibold text-slate-800 text-sm mt-2 mb-1 line-clamp-2">
                       {video.title}
                     </h3>
