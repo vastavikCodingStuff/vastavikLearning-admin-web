@@ -3,17 +3,45 @@
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { useCourseCurriculum, useCourses } from "@/hooks/useCourses";
-import { ChevronRight, FileText, BookOpen, Plus, Youtube } from "lucide-react";
+import { ChevronRight, FileText, BookOpen, Plus, Youtube, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { UploadVideoModal } from "@/components/courses/UploadVideoModal";
 import { VideoLesson } from "@/types/api";
 
 export default function CourseCurriculumPage() {
   const { id } = useParams<{ id: string }>();
-  const { data, loading, addLessonToPart } = useCourseCurriculum(id);
+  const { data, loading, addLessonToPart, removeLessonFromPart, removePart, refetch } = useCourseCurriculum(id);
   const { courses } = useCourses();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [selectedPartId, setSelectedPartId] = useState<string | undefined>();
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const handleDeleteLesson = async (partId: string, subpartId: string, title: string) => {
+    if (!confirm(`Delete lesson "${title}" from this part? The curriculum link is removed immediately.`)) return;
+    const withVideo = confirm("Also delete the linked video file itself? OK = yes, Cancel = keep video.");
+    setDeleting(subpartId);
+    try {
+      await removeLessonFromPart?.(partId, subpartId, withVideo);
+      await refetch?.();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Delete failed. Please retry.");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleDeletePart = async (partId: string, title: string, count: number) => {
+    if (!confirm(`Delete part "${title}" and its ${count} lesson(s)? This cannot be undone.`)) return;
+    setDeleting(partId);
+    try {
+      await removePart?.(partId);
+      await refetch?.();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Delete failed. Please retry.");
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -73,12 +101,22 @@ export default function CourseCurriculumPage() {
                   <p className="text-xs text-slate-400">{part.subparts.length} lessons</p>
                 </div>
               </div>
-              <button
-                onClick={() => { setSelectedPartId(part.part_id); setIsUploadOpen(true); }}
-                className="flex items-center gap-1 text-xs text-orange-600 hover:bg-orange-50 px-2.5 py-1.5 rounded-lg transition-colors font-medium border border-orange-200"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add Video Lesson
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { setSelectedPartId(part.part_id); setIsUploadOpen(true); }}
+                  className="flex items-center gap-1 text-xs text-orange-600 hover:bg-orange-50 px-2.5 py-1.5 rounded-lg transition-colors font-medium border border-orange-200"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Video Lesson
+                </button>
+                <button
+                  onClick={() => handleDeletePart(part.part_id, part.title, part.subparts.length)}
+                  disabled={deleting === part.part_id}
+                  title="Delete this part and all its lessons"
+                  className="flex items-center gap-1 text-xs text-red-500 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors font-medium border border-red-200 disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Delete Part
+                </button>
+              </div>
             </div>
 
             <div className="divide-y divide-slate-50">
@@ -90,6 +128,14 @@ export default function CourseCurriculumPage() {
                     <p className="text-xs text-slate-400">Lesson ID: {sub.lesson_id}</p>
                   </div>
                   <span className="text-xs text-slate-300">{si + 1}</span>
+                  <button
+                    onClick={() => handleDeleteLesson(part.part_id, sub.subpart_id, sub.title)}
+                    disabled={deleting === sub.subpart_id}
+                    title="Delete this lesson"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               ))}
             </div>

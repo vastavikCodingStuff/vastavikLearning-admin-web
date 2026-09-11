@@ -238,6 +238,52 @@ export function useCourseCurriculum(courseId: string) {
     }
   };
 
-  return { data, loading, error, addLessonToPart, refetch: fetchCurriculum };
+  const removeLessonFromPart = async (partId: string, subpartId: string, deleteVideo = false) => {
+    if (!data) return;
+    const prev = data;
+    const updatedParts = data.parts.map((p) => {
+      if (p.part_id === partId) {
+        return { ...p, subparts: p.subparts.filter((s) => s.subpart_id !== subpartId) };
+      }
+      return p;
+    });
+    setData({ ...data, parts: updatedParts });
+
+    try {
+      localStorage.setItem(`vastavik_curriculum_${courseId}`, JSON.stringify({ ...data, parts: updatedParts }));
+    } catch {
+      // offline fallback
+    }
+    try {
+      await api.delete(`/admin/courses/${courseId}/parts/${partId}/subparts/${subpartId}${deleteVideo ? "?delete_video=true" : ""}`);
+    } catch {
+      // rollback on failure
+      setData(prev);
+      throw new Error("Could not delete lesson on the server. Please retry.");
+    }
+  };
+
+  const removePart = async (partId: string) => {
+    if (!data) return;
+    const prev = data;
+    setData({ ...data, parts: data.parts.filter((p) => p.part_id !== partId) });
+
+    try {
+      localStorage.setItem(
+        `vastavik_curriculum_${courseId}`,
+        JSON.stringify({ ...data, parts: data.parts.filter((p) => p.part_id !== partId) })
+      );
+    } catch {
+      // offline fallback
+    }
+    try {
+      await api.delete(`/admin/courses/${courseId}/parts/${partId}`);
+    } catch {
+      setData(prev);
+      throw new Error("Could not delete part on the server. Please retry.");
+    }
+  };
+
+  return { data, loading, error, addLessonToPart, removeLessonFromPart, removePart, refetch: fetchCurriculum };
 }
 
