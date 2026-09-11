@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Video, Monitor, PenLine, Zap, Plus, Search, Clock, Crown, Play, Youtube, ExternalLink, Trash2 } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Video, Monitor, PenLine, Zap, Plus, Search, Clock, Crown, Play, Youtube, ExternalLink, Trash2, RotateCw } from "lucide-react";
 import api from "@/lib/api";
 import { VideoLesson, VideoType } from "@/types/api";
 import { formatDuration, cn } from "@/lib/utils";
@@ -81,21 +81,29 @@ export default function VideosPage() {
     }
   };
 
-  useEffect(() => {
-    api.get<{ videos: VideoLesson[] }>("/admin/videos")
-      .then((r) => {
-        const serverVideos = r.data.videos ?? [];
-        const custom = getCustomVideos();
-        const customOnly = custom.filter((cv) => !serverVideos.some((sv) => sv.id === cv.id));
-        setVideos([...customOnly, ...serverVideos]);
-      })
-      .catch(() => {
-        const custom = getCustomVideos();
-        const customOnly = custom.filter((cv) => !DEFAULT_VIDEOS.some((dv) => dv.id === cv.id));
-        setVideos([...customOnly, ...DEFAULT_VIDEOS]);
-      })
-      .finally(() => setLoading(false));
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchVideos = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      const r = await api.get<{ videos: VideoLesson[] }>("/admin/videos");
+      const serverVideos = r.data.videos ?? [];
+      const custom = getCustomVideos();
+      const customOnly = custom.filter((cv) => !serverVideos.some((sv) => sv.id === cv.id));
+      setVideos([...customOnly, ...serverVideos]);
+    } catch {
+      const custom = getCustomVideos();
+      const customOnly = custom.filter((cv) => !DEFAULT_VIDEOS.some((dv) => dv.id === cv.id));
+      setVideos([...customOnly, ...DEFAULT_VIDEOS]);
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchVideos();
+  }, [fetchVideos]);
 
   const handleVideoAdded = (newVideo: VideoLesson) => {
     setVideos((prev) => [newVideo, ...prev]);
@@ -161,12 +169,21 @@ export default function VideosPage() {
             ))}
           </div>
         </div>
-        <button
-          onClick={() => setIsUploadOpen(true)}
-          className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full sm:w-auto shadow-sm"
-        >
-          <Youtube className="w-4 h-4" /> Upload Video Lecture
-        </button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <button
+            onClick={fetchVideos}
+            disabled={isRefreshing}
+            className="flex items-center justify-center gap-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            <RotateCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} /> Refresh
+          </button>
+          <button
+            onClick={() => setIsUploadOpen(true)}
+            className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex-1 sm:flex-none shadow-sm"
+          >
+            <Youtube className="w-4 h-4" /> Upload Video Lecture
+          </button>
+        </div>
       </div>
 
       {/* Upload Modal */}

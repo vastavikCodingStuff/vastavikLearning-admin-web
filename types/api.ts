@@ -152,6 +152,8 @@ export interface CourseCurriculum {
 
 export type VideoType = "screen_recording" | "whiteboard" | "short";
 
+export type VideoPrivacy = "public" | "unlisted" | "private";
+
 export interface VideoLesson {
   id: string;
   title: string;
@@ -167,6 +169,9 @@ export interface VideoLesson {
   order: number;
   course_id?: string;
   part_id?: string;
+  privacy: VideoPrivacy;
+  is_published: boolean;
+  shorts_url?: string;
 }
 
 // ─── Practice Content ─────────────────────────────────────────────────────────
