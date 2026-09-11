@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { X, Youtube, Monitor, PenLine, Zap, Crown, CheckCircle2, Play } from "lucide-react";
-import { Course, VideoLesson, VideoType } from "@/types/api";
+import { Course, VideoLesson, VideoType, VideoPrivacy } from "@/types/api";
 import { extractYouTubeVideoId, cn } from "@/lib/utils";
 import api from "@/lib/api";
 
@@ -48,6 +48,11 @@ export function UploadVideoModal({
   const [courseId, setCourseId] = useState(preselectedCourseId || (courses[0]?.id ?? ""));
   const [durationMins, setDurationMins] = useState(15);
   const [isPremium, setIsPremium] = useState(false);
+  const [privacy, setPrivacy] = useState<VideoPrivacy>("unlisted");
+  const [isPublished, setIsPublished] = useState(true);
+  const [whiteboardUrl, setWhiteboardUrl] = useState("");
+  const [codeSample, setCodeSample] = useState("");
+  const [shortsUrl, setShortsUrl] = useState("");
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -71,12 +76,15 @@ export function UploadVideoModal({
       youtube_url: youtubeInput.trim(),
       youtube_video_id: detectedVideoId,
       duration_sec: Math.max(1, durationMins * 60),
-      whiteboard_image_url: "",
-      code_sample: "",
+      whiteboard_image_url: whiteboardUrl.trim(),
+      code_sample: codeSample.trim(),
       notes: notes.trim(),
       is_premium: isPremium,
       order: 1,
       course_id: courseId || undefined,
+      privacy: privacy,
+      is_published: isPublished,
+      shorts_url: videoType === "short" ? (shortsUrl.trim() || youtubeInput.trim()) : undefined,
     };
 
     // 1. Save locally in localStorage for resilience
@@ -293,6 +301,95 @@ export function UploadVideoModal({
                 />
               </button>
             </div>
+
+            {/* Privacy & Published */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Privacy
+                </label>
+                <select
+                  value={privacy}
+                  onChange={(e) => setPrivacy(e.target.value as VideoPrivacy)}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+                >
+                  <option value="public">Public — anyone can search</option>
+                  <option value="unlisted">Unlisted — link only (default)</option>
+                  <option value="private">Private — admin only</option>
+                </select>
+                <p className="text-xs text-slate-400 mt-1">Public/unlisted/private is stored; YouTube privacy still set in YouTube Studio.</p>
+              </div>
+              <div className="flex flex-col justify-end">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Published
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsPublished(!isPublished)}
+                  className={cn(
+                    "w-full flex items-center justify-between p-3 rounded-xl border transition-colors",
+                    isPublished ? "border-green-300 bg-green-50" : "border-slate-200 bg-slate-50"
+                  )}
+                >
+                  <span className="text-sm font-medium text-slate-700">{isPublished ? "Published — visible to students" : "Draft — hidden from students"}</span>
+                  <span className={cn("w-10 h-5 rounded-full relative transition-colors", isPublished ? "bg-green-500" : "bg-slate-300")}>
+                    <span className={cn("absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform", isPublished ? "translate-x-5 left-0.5" : "translate-x-0 left-0.5")} />
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Whiteboard Image URL — only for whiteboard type */}
+            {videoType === "whiteboard" && (
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Whiteboard Image URL (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://example.com/whiteboard.png or upload to /uploads"
+                  value={whiteboardUrl}
+                  onChange={(e) => setWhiteboardUrl(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
+                {whiteboardUrl && (
+                  <div className="mt-2 rounded-xl overflow-hidden border border-slate-200 max-h-48">
+                    <img src={whiteboardUrl} alt="Whiteboard preview" className="w-full h-auto object-contain" onError={(e) => ((e.target as HTMLImageElement).style.display = "none")} />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Code Sample — for Code tab */}
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Code Sample (Optional) — for VS Code tab
+              </label>
+              <textarea
+                rows={4}
+                placeholder="public class HelloWorld { ... }  — leave empty to use fallback"
+                value={codeSample}
+                onChange={(e) => setCodeSample(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm font-mono text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
+              />
+              <p className="text-xs text-slate-400 mt-1">Shown in the Code tab; supports Java/Python/C/C++ syntax highlight.</p>
+            </div>
+
+            {/* Shorts URL — only for short type */}
+            {videoType === "short" && (
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                  Shorts URL (Optional — defaults to YouTube URL)
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://www.youtube.com/shorts/abc123"
+                  value={shortsUrl}
+                  onChange={(e) => setShortsUrl(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono text-xs"
+                />
+              </div>
+            )}
 
             {/* Description */}
             <div>
